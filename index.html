@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>【TW Pride】10/24 週五晚餐名單確認｜Reservation Confirmation</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#0b0c10; --panel:#11131a; --ink:#eef2f7; --muted:#98a2ad; --border:#232635;
+  --good:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+  --r1:#ff6b6b; --r2:#f59e0b; --r3:#f7d154; --r4:#34d399; --r5:#60a5fa; --r6:#a78bfa;
+}
+*{box-sizing:border-box}
+html,body{height:100%;background:var(--bg);color:var(--ink);font-family:"Yu Gothic UI Light","Noto Sans TC","Segoe UI",system-ui,-apple-system,sans-serif}
+body{margin:0}
+.wrap{max-width:1080px;margin:28px auto 96px;padding:0 14px}
+h1{margin:0 0 10px;font-size:28px;letter-spacing:.2px;color:#fff}
+.rule{height:2px;border:0;margin:8px 0 18px;background:linear-gradient(90deg,transparent,var(--r1) 10%,var(--r2),var(--r3),var(--r4),var(--r5),var(--r6),transparent)}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px;backdrop-filter:blur(10px)}
+.row{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1.6fr) 160px;gap:10px;align-items:end}
+label{font-size:12px;color:var(--muted);margin:0 0 6px;display:block}
+input,button{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0f1117;color:var(--ink);outline:none;font-size:14px}
+button{cursor:pointer}
+.btn{padding:10px 12px;border-radius:12px;font-size:14px}
+.btn-primary{border:1px solid transparent;color:#fff;font-weight:700}
+.btn-search{background:
+  linear-gradient(135deg,#0ea5e9,#22d3ee) padding-box,
+  linear-gradient(135deg,#0ea5e9,#22d3ee) border-box}
+.btn-rainbow{border:1px solid transparent;background:linear-gradient(#161a22,#161a22) padding-box,linear-gradient(90deg,var(--r1),var(--r2),var(--r3),var(--r4),var(--r5),var(--r6)) border-box}
+.btn-rainbow.is-glow{animation:glow 1.2s linear 1}
+@keyframes glow{50%{box-shadow:0 0 16px rgba(96,165,250,.35)}}
+.search-hint{font-size:12px;color:var(--muted);margin:8px 2px 0}
+.res{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+.item{border:1px solid var(--border);border-radius:14px;background:var(--panel);padding:10px}
+.line1{display:grid;grid-template-columns: 200px minmax(0,1fr) 240px;gap:12px;align-items:center}
+.line1 .flag{display:flex;align-items:center;gap:10px;min-width:0}
+.flag .fx{font-size:18px}
+.flag .cty{color:#cfd6dd;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ig{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.line2{margin-top:6px;display:grid;grid-template-columns: 1fr 1fr;gap:10px;align-items:center}
+.status{display:flex;align-items:center;gap:8px;font-size:13px}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;border:1.5px solid currentColor;background:transparent}
+.badge svg{width:16px;height:16px}
+.badge.good{color:var(--good)} .badge.warn{color:var(--warn)} .badge.bad{color:var(--bad)}
+.linkwrap{justify-self:end}
+.linkwrap a{display:inline-block;padding:7px 10px;border-radius:10px;border:1px solid var(--border);color:#e6f0ff;text-decoration:none;background:#0f1117}
+.linkwrap a:hover{border-color:#5eead4}
+.line3{margin-top:8px;display:grid;grid-template-columns: 1fr 1fr;gap:10px}
+.btn-ghost{background:#0f1117;border:1px solid var(--border);color:#e6f0ff}
+.btn-ghost:hover{border-color:#5eead4}
+.btn-small{font-size:13px;padding:8px 10px;border-radius:10px}
+.btn-invite{background:linear-gradient(#0f1117,#0f1117) padding-box,linear-gradient(90deg,#d8b65f,#fce7b2,#d8b65f) border-box;border:1px solid transparent;color:#fff}
+
+/* Modal */
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50}
+.modal{width:min(560px,92vw);background:#0f1117;border:1px solid var(--border);border-radius:16px;padding:14px}
+.modal h3{margin:0 0 10px}
+.choice{display:flex;gap:10px}
+.choice .opt{flex:1;padding:10px;border-radius:12px;border:1px dashed #2a2f43;color:#8b95a2;background:#0e1118;text-align:center;cursor:pointer;user-select:none}
+.choice .opt.active{color:#fff;border:1px solid transparent;background:linear-gradient(#0e1118,#0e1118) padding-box,linear-gradient(90deg,var(--r1),var(--r2),var(--r3),var(--r4),var(--r5),var(--r6)) border-box}
+.modal textarea{width:100%;min-height:84px;margin-top:10px;border-radius:12px;border:1px solid var(--border);background:#0f1117;color:#fff;padding:10px}
+.modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}
+.note{font-size:12px;color:var(--muted);margin-top:6px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid #9db4ff;border-right-color:transparent;border-radius:50%;vertical-align:-3px;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* cats */
+.catDock{position:fixed;left:14px;bottom:14px;display:flex;gap:10px;z-index:60;opacity:.9}
+.catDock img{width:56px;height:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));cursor:pointer;transition:transform .15s}
+.catDock img:hover{transform:translateY(-2px)}
+
+@media (max-width:960px){
+  .row{grid-template-columns:1fr}
+  .line1{grid-template-columns: 180px 1fr 1fr}
+  .line2,.line3{grid-template-columns:1fr}
+  .linkwrap{justify-self:start}
+}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>【TW Pride】10/24 週五晚餐名單確認｜Reservation Confirmation</h1>
+    <hr class="rule"/>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <label>姓名 / NAME</label>
+          <input id="nameInput" list="nameList" placeholder="輸入或選擇 NAME / Type or choose NAME">
+          <datalist id="nameList"></datalist>
+        </div>
+        <div>
+          <label>IG 帳號 / IG</label>
+          <input id="igInput" list="igList" placeholder="輸入或選擇 IG / Type or choose IG">
+          <datalist id="igList"></datalist>
+        </div>
+        <div style="align-self:end">
+          <button id="btnSearch" class="btn btn-primary btn-search">搜尋 / Search</button>
+        </div>
+      </div>
+      <div id="hint" class="search-hint">輸入幾個字，會自動帶出可選清單 / Type to see suggestions.</div>
+    </div>
+
+    <div id="leaderHead" class="search-hint" style="margin-top:10px"></div>
+    <div id="results" class="res"></div>
+  </div>
+
+  <!-- cats -->
+  <div class="catDock">
+    <img id="catList" alt="Upload List" title="上傳名單 / Upload List">
+    <img id="catInvite" alt="Upload Invite BG" title="上傳邀請函底圖 / Upload Invite Background">
+    <input id="fileList" type="file" accept=".xlsx" style="display:none">
+    <input id="fileInvite" type="file" accept="image/*" style="display:none">
+  </div>
+
+  <!-- confirm modal -->
+  <div id="backdrop" class="backdrop">
+    <div class="modal">
+      <h3>出席確認 / Attendance Confirmation</h3>
+      <div class="choice">
+        <div class="opt" data-v="confirmed">確認訂位，我會參加<br><small>Confirm reservation — I will attend</small></div>
+        <div class="opt" data-v="cancelled">抱歉，無法參加<br><small>Sorry — cannot attend</small></div>
+      </div>
+      <textarea id="note" placeholder="備註 Notes（選填 / optional）"></textarea>
+      <div id="mMsg" class="note"></div>
+      <div class="actions">
+        <button id="mCancel" class="btn btn-ghost btn-small">取消 / Cancel</button>
+        <button id="mSend" class="btn btn-primary btn-rainbow btn-small">送出 / Submit</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ======= 設定 ======= */
+const CAT_SRC = "ChatGPT_Image_2025年5月26日_下午05_09_32-removebg-preview.png";
+const WEB_APP_URL = ""; // 換成你的 Apps Script Web App URL
+const UPLOAD_PASSWORD = "0714";
+/* ==================== */
+
+const nameList = document.getElementById('nameList');
+const igList   = document.getElementById('igList');
+
+function spark(btn){ btn.classList.add('is-glow'); setTimeout(()=>btn.classList.remove('is-glow'),800); }
+document.getElementById('catList').src = CAT_SRC;
+document.getElementById('catInvite').src = CAT_SRC;
+
+let DATA = []; let INVITE_BG = null; let currentRows = []; let modalRow = null;
+
+/* 小工具 */
+const $ = (q)=>document.querySelector(q);
+const norm = s => (s??'').toString().trim().toLowerCase();
+const uniq = arr => [...new Set(arr)];
+function escapeHtml(s){return (s??'').toString().replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]))}
+
+/* 上傳名單（.xlsx） */
+const fileList = document.getElementById('fileList');
+document.getElementById('catList').addEventListener('click',()=>{
+  const ok = prompt('請輸入密碼 / Enter password'); if(ok!==UPLOAD_PASSWORD) return; fileList.click();
+});
+fileList.addEventListener('change', async (e)=>{
+  const f = e.target.files?.[0]; if(!f) return;
+  try{
+    const wb = XLSX.read(await f.arrayBuffer(), {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws,{defval:""});
+    const req = ['item','number','country','flag','name','ig','leader','link','status','qrcode'];
+    DATA = rows.map(r=>{
+      const o = {};
+      req.forEach(k=>{ o[k] = (r[k] ?? r[k?.toUpperCase?.()] ?? ""); });
+      // 正規化型別
+      o.item=String(o.item); o.number=String(o.number); o.country=String(o.country);
+      o.flag=String(o.flag); o.name=String(o.name); o.ig=String(o.ig);
+      o.leader=String(o.leader); o.link=String(o.link); o.qrcode=String(o.qrcode);
+      o.status=String(o.status||'pending').toLowerCase();
+      return o;
+    });
+    if(!DATA.length) throw new Error('EMPTY');
+    // datalist
+    nameList.innerHTML = uniq(DATA.map(r=>r.name).filter(Boolean)).map(v=>`<option value="${escapeHtml(v)}"></option>`).join('');
+    igList.innerHTML   = uniq(DATA.map(r=>r.ig).filter(Boolean)).map(v=>`<option value="${escapeHtml(v)}"></option>`).join('');
+    // 提示
+    const total=DATA.length, leaders=new Set(DATA.map(r=>norm(r.leader))).size, pend=DATA.filter(r=>!r.status||r.status==='pending').length;
+    $('#hint').textContent = `全部 / Total：${total}　桌長數 / Leaders：${leaders}　未回覆 / Pending：${pend}`;
+    alert(`全部：${total}　桌長數：${leaders}　未回覆：${pend}`);
+  }catch(err){
+    alert('清單讀取失敗，請確認為 .xlsx 且欄位命名正確。');
+  }finally{
+    e.target.value='';
+  }
+});
+
+/* 上傳邀請函底圖 */
+const fileInvite = document.getElementById('fileInvite');
+document.getElementById('catInvite').addEventListener('click',()=>{
+  const ok = prompt('請輸入密碼 / Enter password'); if(ok!==UPLOAD_PASSWORD) return; fileInvite.click();
+});
+fileInvite.addEventListener('change', (e)=>{
+  const f = e.target.files?.[0]; if(!f) return;
+  const fr=new FileReader(); fr.onload=()=>{ INVITE_BG=fr.result; alert('邀請函底圖已更新 / Invite background updated.'); };
+  fr.readAsDataURL(f); e.target.value='';
+});
+
+/* 搜尋 */
+const elRes = $('#results'), elHead=$('#leaderHead');
+$('#btnSearch').addEventListener('click', doSearch);
+$('#nameInput').addEventListener('keydown', e=>{ if(e.key==='Enter') doSearch(); });
+$('#igInput').addEventListener('keydown', e=>{ if(e.key==='Enter') doSearch(); });
+
+function doSearch(){
+  const qn = norm($('#nameInput').value), qi = norm($('#igInput').value);
+  if(!DATA.length){ alert('請先上傳名單（.xlsx）'); return; }
+  let sel=null;
+  if(qi) sel = DATA.find(r=>norm(r.ig)===qi);
+  if(!sel && qn) sel = DATA.find(r=>norm(r.name)===qn);
+  if(!sel){
+    const cand = DATA.filter(r=>(qi&&norm(r.ig).includes(qi))||(qn&&norm(r.name).includes(qn)));
+    if(cand.length){ renderLeader(cand[0].leader); return; }
+    elHead.textContent='查無資料 / No results'; elRes.innerHTML=''; return;
+  }
+  renderLeader(sel.leader);
+}
+
+function renderLeader(leader){
+  const L = (leader??'').toString();
+  currentRows = DATA.filter(r=>norm(r.leader)===norm(L));
+  elHead.textContent = `桌長 / Leader：${L || '—'}（${currentRows.length} 筆 / records）`;
+  elRes.innerHTML = currentRows.map(rowTpl).join('');
+  elRes.querySelectorAll('[data-act="confirm"]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>openModal(e.currentTarget.closest('.item')));
+  });
+  elRes.querySelectorAll('[data-act="invite"]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>downloadInvite(e.currentTarget.closest('.item')));
+  });
+}
+
+function rowTpl(r){
+  const status = (r.status||'pending').toLowerCase();
+  const sBadge = statusBadge(status);
+  const link = r.link ? `<a href="${escapeHtml(r.link)}" target="_blank" rel="noopener noreferrer">開啟連結 / Open link</a>` : '';
+  return `<div class="item" data-row='${escapeHtml(JSON.stringify(r))}'>
+    <div class="line1">
+      <div class="flag"><span class="fx">${escapeHtml(r.flag||'')}</span><span class="cty">${escapeHtml(r.country||'-')}</span></div>
+      <div class="name">${escapeHtml(r.name||'-')}</div>
+      <div class="ig">${escapeHtml(r.ig||'-')}</div>
+    </div>
+    <div class="line2">
+      <div class="status">${sBadge}</div>
+      <div class="linkwrap">${link}</div>
+    </div>
+    <div class="line3">
+      <button class="btn btn-ghost btn-rainbow btn-small" data-act="confirm">確認 / Confirm</button>
+      <button class="btn btn-invite btn-small" data-act="invite">邀請函下載 / Download Invite</button>
+    </div>
+  </div>`;
+}
+
+function statusBadge(status){
+  if(status==='confirmed') return `<span class="badge good">${svgCheck()} 已確定 / Confirmed</span>`;
+  if(status==='cancelled') return `<span class="badge bad">${svgX()} 取消 / Cancelled</span>`;
+  return `<span class="badge warn">${svgQ()} 未回覆 / Pending</span>`;
+}
+function svgCheck(){return `<svg viewBox="0 0 24 24" fill="none"><path stroke="currentColor" stroke-width="2" d="M20 6L9 17l-5-5"/></svg>`}
+function svgQ(){return `<svg viewBox="0 0 24 24" fill="none"><path stroke="currentColor" stroke-width="2" d="M9.5 9a3.5 3.5 0 117 0c0 2-2 2.5-2 4"/><circle cx="12" cy="18" r="1.2" fill="currentColor"/></svg>`}
+function svgX(){return `<svg viewBox="0 0 24 24" fill="none"><path stroke="currentColor" stroke-width="2" d="M6 6l12 12M18 6L6 18"/></svg>`}
+
+/* Confirm Modal */
+const $bd = document.getElementById('backdrop'), $msg = document.getElementById('mMsg'), $note = document.getElementById('note');
+let chosen = null;
+document.querySelectorAll('.opt').forEach(o=>{
+  o.addEventListener('click', ()=>{ chosen=o.dataset.v; document.querySelectorAll('.opt').forEach(x=>x.classList.remove('active')); o.classList.add('active'); });
+});
+document.getElementById('mCancel').addEventListener('click', ()=>{ $bd.style.display='none'; chosen=null; $note.value=''; });
+document.getElementById('mSend').addEventListener('click', async (e)=>{
+  if(!modalRow || !chosen){ $msg.textContent='請先選擇一個選項 / Please choose one option.'; return; }
+  const btn = e.currentTarget; spark(btn); btn.disabled = true; $msg.innerHTML = `<span class="spin"></span> 送出中 / Sending…`;
+  const payload = {
+    _action:'submit',
+    item: modalRow.item||'', number: modalRow.number||'',
+    country: modalRow.country||'', flag: modalRow.flag||'',
+    name: modalRow.name||'', ig: modalRow.ig||'',
+    leader: modalRow.leader||'', link: modalRow.link||'',
+    qrcode: modalRow.qrcode||'', status: chosen, notes: $note.value||'', ts: Date.now()
+  };
+  try{
+    if(!WEB_APP_URL) throw new Error('NO_ENDPOINT');
+    const res = await fetch(WEB_APP_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload),mode:'cors',cache:'no-store'});
+    await res.text();
+    const idx = DATA.findIndex(r=>norm(r.name)===norm(modalRow.name)&&norm(r.ig)===norm(modalRow.ig)&&norm(r.leader)===norm(modalRow.leader));
+    if(idx>-1) DATA[idx].status = chosen;
+    renderLeader(modalRow.leader);
+    $msg.textContent='已送出 / Submitted'; setTimeout(()=>{ $bd.style.display='none'; }, 600);
+  }catch(err){ $msg.textContent = (err.message==='NO_ENDPOINT') ? '尚未設定 Web App URL' : '連線失敗 / Network error'; }
+  finally{ btn.disabled=false; chosen=null; $note.value=''; }
+});
+function openModal(itemEl){ modalRow = JSON.parse(itemEl.dataset.row||'{}'); $bd.style.display='flex'; }
+
+/* 邀請函（金色 QR 佔位） */
+async function downloadInvite(itemEl){
+  const r = JSON.parse(itemEl.dataset.row||'{}');
+  const W=1920,H=1080; const cvs=document.createElement('canvas'); cvs.width=W;cvs.height=H; const ctx=cvs.getContext('2d');
+  if(INVITE_BG){ await drawImg(INVITE_BG,ctx,W,H); } else { ctx.fillStyle='#0e1118'; ctx.fillRect(0,0,W,H); const g=ctx.createLinearGradient(0,0,W,0); ['--r1','--r2','--r3','--r4','--r5','--r6'].forEach((v,i)=>g.addColorStop(i/5,getComputedStyle(document.documentElement).getPropertyValue(v))); ctx.fillStyle=g; ctx.fillRect(0,H-6,W,6); }
+  const title=`${r.item||''} - ${r.number||''}`;
+  ctx.font="700 86px 'Noto Serif HK Black','Yu Gothic UI Light',sans-serif"; ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(title, W/2, H/2);
+  const qr = await genSimpleQR(r.qrcode||r.link||''); const q=240; ctx.drawImage(qr,(W-q)/2,H/2+90,q,q);
+  const a=document.createElement('a'); a.download=`${(r.name||'invite')}.png`; a.href=cvs.toDataURL('image/png'); a.click();
+}
+function drawImg(src,ctx,W,H){return new Promise(res=>{const img=new Image(); img.onload=()=>{ctx.drawImage(img,0,0,W,H);res();}; img.src=src;});}
+function genSimpleQR(text){
+  return new Promise(res=>{
+    const s=33, scale=7, pad=6, W=(s+pad*2)*scale; const c=document.createElement('canvas'); c.width=W; c.height=W; const x=c.getContext('2d');
+    x.fillStyle='#fff'; x.fillRect(0,0,W,W); x.fillStyle='#d8b65f';
+    for(let i=0;i<s;i++){ for(let j=0;j<s;j++){ if((i*j+i+j+text.length)%7===0) x.fillRect((i+pad)*scale,(j+pad)*scale,scale,scale); } }
+    const img=new Image(); img.onload=()=>res(img); img.src=c.toDataURL('image/png');
+  });
+}
+</script>
+</body>
+</html>
