@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>商品數量辨識系統</title>
+    <title>AI 商品數量視覺辨識系統 (單次批次優化版)</title>
     <style>
         :root {
             --primary: #2563eb; --primary-hover: #1d4ed8;
@@ -19,7 +19,6 @@
         header h1 { font-size: 24px; margin-bottom: 8px; }
         header p { color: var(--text-muted); font-size: 14px; }
 
-        /* API 設定列 */
         .api-bar {
             background: var(--card-bg);
             border: 1px solid var(--border);
@@ -31,21 +30,25 @@
         .api-input-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .api-input-wrap { flex: 1; min-width: 260px; display: flex; gap: 8px; }
         .api-input { flex: 1; padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 14px; }
+        .model-select { padding: 9px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: #fff; }
+
         .diag-box { margin-top: 12px; padding: 12px 16px; border-radius: 8px; font-size: 14px; display: none; line-height: 1.5; }
 
-        /* 控制面板 */
         .control-panel {
             background: var(--card-bg);
-            padding: 14px 20px;
+            padding: 16px 20px;
             border-radius: 12px;
             border: 1px solid var(--border);
             margin-bottom: 24px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .control-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 12px;
+            margin-bottom: 10px;
         }
 
         .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -56,7 +59,29 @@
         .btn-secondary { background-color: #f1f5f9; color: var(--text-main); border: 1px solid var(--border); }
         .btn-secondary:hover { background-color: #e2e8f0; }
 
-        /* 九宮格區域 */
+        .progress-track {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 999px;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #3b82f6, #2563eb);
+            transition: width 0.3s ease;
+        }
+        .progress-bar.indeterminate {
+            width: 40% !important;
+            animation: indet 1.1s ease-in-out infinite;
+        }
+        @keyframes indet {
+            0% { margin-left: -40%; }
+            100% { margin-left: 100%; }
+        }
+
         .grid-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -75,6 +100,10 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             transition: border-color 0.3s, box-shadow 0.3s;
         }
+        .product-card.processing {
+            border-color: #93c5fd;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+        }
 
         .card-header { display: flex; align-items: center; gap: 8px; }
         .item-name-input { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-weight: 600; outline: none; }
@@ -82,7 +111,7 @@
         .btn-delete:hover { color: var(--danger); }
 
         .drop-zone {
-            min-height: 128px;
+            height: 190px;
             border: 2px dashed #cbd5e1;
             border-radius: 8px;
             display: flex;
@@ -95,38 +124,18 @@
             transition: background-color 0.2s, border-color 0.2s;
         }
         .drop-zone.dragover { border-color: var(--primary); background-color: #eff6ff; }
-        .drop-prompt { color: var(--text-muted); font-size: 13px; text-align: center; line-height: 1.6; pointer-events: none; padding: 12px; }
+        .drop-prompt { color: var(--text-muted); font-size: 13px; text-align: center; line-height: 1.6; pointer-events: none; }
+        .preview-img { width: 100%; height: 100%; object-fit: contain; display: none; }
         .file-input { display: none; }
-
-        .hint-input {
-            width: 100%; padding: 8px 10px; border: 1px solid var(--border);
-            border-radius: 6px; font-size: 13px; outline: none; color: var(--text-main);
-        }
-        .hint-input:focus, .item-name-input:focus, .count-input:focus, .api-input:focus {
-            border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.09);
-        }
-        .thumb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .thumb-item { position: relative; aspect-ratio: 1; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #f8fafc; }
-        .thumb-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .thumb-index { position: absolute; left: 5px; bottom: 5px; background: rgba(15,23,42,.78); color: #fff; border-radius: 999px; padding: 2px 6px; font-size: 11px; }
-        .thumb-remove { position: absolute; right: 4px; top: 4px; width: 24px; height: 24px; padding: 0; border-radius: 50%; background: rgba(15,23,42,.76); color: #fff; font-size: 16px; line-height: 24px; }
-        .thumb-remove:hover { background: var(--danger); }
 
         .card-footer { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; border-top: 1px solid #f1f5f9; }
         .status-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
-        .count-badge { background: #f1f5f9; color: var(--text-muted); padding: 3px 10px; border-radius: 9999px; font-weight: bold; font-size: 13px; }
+        .count-badge { background: #f1f5f9; color: var(--text-muted); padding: 3px 10px; border-radius: 9999px; font-weight: bold; font-size: 13px; transition: all 0.3s; }
+        .count-badge.running { background: #e0f2fe; color: #0284c7; }
         .count-badge.success { background: #dcfce7; color: var(--success); }
         .count-badge.error { background: #fee2e2; color: var(--danger); }
-        .count-badge.running { background: #e0f2fe; color: #0284c7; }
-        .count-badge.warning { background: #ffedd5; color: var(--warning); }
         .card-notes { font-size: 12px; color: var(--text-muted); min-height: 16px; line-height: 1.4; word-break: break-all; }
-        .count-input { width: 92px; padding: 7px 9px; text-align: right; border: 1px solid var(--border); border-radius: 7px; font-size: 14px; font-weight: 700; color: #1d4ed8; }
-        .count-input:disabled { color: var(--text-muted); background: #f8fafc; }
-        .helper-text { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
-        .progress-track { width: 100%; height: 5px; background: #e2e8f0; border-radius: 999px; overflow: hidden; display: none; }
-        .progress-bar { width: 0; height: 100%; background: var(--primary); transition: width .25s ease; }
 
-        /* 結果清單面板 */
         .summary-panel {
             background: var(--card-bg);
             border: 1px solid var(--border);
@@ -138,54 +147,49 @@
         .summary-table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
         .summary-table th, .summary-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
         .summary-table th { background: #f8fafc; color: var(--text-muted); }
-
-        @media (max-width: 640px) {
-            body { padding: 16px 10px; }
-            .grid-container { grid-template-columns: 1fr; }
-            .summary-panel { overflow-x: auto; }
-            .summary-table { min-width: 700px; }
-        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>商品數量辨識系統</h1>
-        <p>每個商品分開辨識，完成一項就立即顯示；低信心結果會提醒人工確認</p>
+        <h1>AI 商品數量視覺辨識系統 (單次批次優化版)</h1>
+        <p>所有商品照片整合成「單一次」API 請求送出，速度更快、不會撞到每分鐘請求數限制</p>
     </header>
 
-    <!-- API 設定區 -->
     <div class="api-bar">
         <div class="api-input-row">
             <label for="api-key" style="font-weight: 600; font-size: 14px;">Gemini API Key：</label>
             <div class="api-input-wrap">
                 <input type="password" id="api-key" class="api-input" placeholder="貼上 AIzaSy 開頭的金鑰" autocomplete="off">
                 <button class="btn-secondary" id="btn-toggle-key" type="button">顯示</button>
-                <button class="btn-secondary" id="btn-test-key" type="button" style="background: #e0f2fe; color: #0284c7; border-color: #bae6fd;">測試連線</button>
+                <button class="btn-secondary" id="btn-test-key" type="button" style="background: #e0f2fe; color: #0284c7; border-color: #bae6fd;">🧪 測試連線</button>
             </div>
+            <select id="model-select" class="model-select">
+                <option value="gemini-2.5-flash">gemini-2.5-flash（推薦，快且準）</option>
+                <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite（最快，額度最寬）</option>
+                <option value="gemini-2.5-pro">gemini-2.5-pro（較準，額度很少，5次/分鐘）</option>
+            </select>
         </div>
         <div id="diag-box" class="diag-box"></div>
     </div>
 
-    <!-- 控制面板 -->
     <div class="control-panel">
-        <div style="flex: 1; min-width: 230px;">
-            <div id="overall-status" style="font-size: 14px; color: var(--text-muted); font-weight: 500; margin-bottom: 8px;">準備就緒</div>
-            <div class="progress-track" id="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+        <div class="control-top">
+            <div id="overall-status" style="font-size: 14px; color: var(--text-muted); font-weight: 500;">⚪ 準備就緒</div>
+            <div class="btn-group">
+                <button class="btn-secondary" id="btn-add-card" type="button">+ 新增區域</button>
+                <button class="btn-secondary" id="btn-clear-images" type="button">清空照片</button>
+                <button class="btn-primary" id="btn-run-all" type="button">🚀 一次辨識全部</button>
+            </div>
         </div>
-        <div class="btn-group">
-            <button class="btn-secondary" id="btn-add-card" type="button">+ 新增區域</button>
-            <button class="btn-secondary" id="btn-clear-images" type="button">清空照片</button>
-            <button class="btn-secondary" id="btn-cancel" type="button" style="display:none; color:var(--danger);">停止辨識</button>
-            <button class="btn-primary" id="btn-run-all" type="button">開始辨識</button>
+        <div class="progress-track" id="progress-track">
+            <div class="progress-bar" id="progress-bar"></div>
         </div>
     </div>
 
-    <!-- 九宮格區域 -->
     <div class="grid-container" id="grid-container"></div>
 
-    <!-- 結果清單 -->
     <div class="summary-panel">
         <div class="summary-header">
             <h2>辨識結果清單</h2>
@@ -200,7 +204,7 @@
                     <th style="width: 70px;">編號</th>
                     <th style="width: 180px;">商品名稱</th>
                     <th style="width: 120px;">辨識數量</th>
-                    <th>辨識狀態 / 備註</th>
+                    <th>逐排清點說明 / 備註</th>
                 </tr>
             </thead>
             <tbody id="summary-tbody">
@@ -211,752 +215,402 @@
 </div>
 
 <script>
-(() => {
-    'use strict';
-
-    const MODEL_PRIORITY = ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-2.5-flash'];
-    const MAX_IMAGES_PER_CARD = 4;
-    const MAX_TOTAL_IMAGES = 18;
-    const MAX_IMAGE_DIMENSION = 1800;
-    const CONCURRENCY = 2;
-    const REQUEST_TIMEOUT_MS = 35000;
-    const RETRY_COUNT = 1;
-
     const gridContainer = document.getElementById('grid-container');
     const apiKeyInput = document.getElementById('api-key');
     const btnToggleKey = document.getElementById('btn-toggle-key');
     const btnTestKey = document.getElementById('btn-test-key');
+    const modelSelect = document.getElementById('model-select');
     const diagBox = document.getElementById('diag-box');
     const btnAddCard = document.getElementById('btn-add-card');
     const btnClearImages = document.getElementById('btn-clear-images');
     const btnRunAll = document.getElementById('btn-run-all');
-    const btnCancel = document.getElementById('btn-cancel');
     const overallStatus = document.getElementById('overall-status');
-    const progressTrack = document.getElementById('progress-track');
-    const progressBar = document.getElementById('progress-bar');
     const summaryTbody = document.getElementById('summary-tbody');
     const btnCopyList = document.getElementById('btn-copy-list');
     const btnExportCsv = document.getElementById('btn-export-csv');
+    const progressTrack = document.getElementById('progress-track');
+    const progressBar = document.getElementById('progress-bar');
 
-    let activeModelName = sessionStorage.getItem('gemini_active_model') || MODEL_PRIORITY[0];
-    let imageSeq = 0;
-    let isRunning = false;
-    let stopRequested = false;
-    const activeControllers = new Set();
+    const sleep = (ms) => new Promise(res => setTimeout(res, ms));
 
+    // 記住上次選擇的 API Key 與模型
     apiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
-    apiKeyInput.addEventListener('input', () => {
-        localStorage.setItem('gemini_api_key', apiKeyInput.value.trim());
-    });
+    modelSelect.value = localStorage.getItem('gemini_model') || 'gemini-2.5-flash';
+    apiKeyInput.addEventListener('input', () => localStorage.setItem('gemini_api_key', apiKeyInput.value.trim()));
+    modelSelect.addEventListener('change', () => localStorage.setItem('gemini_model', modelSelect.value));
 
     btnToggleKey.addEventListener('click', () => {
-        const show = apiKeyInput.type === 'password';
-        apiKeyInput.type = show ? 'text' : 'password';
-        btnToggleKey.textContent = show ? '隱藏' : '顯示';
+        const isPwd = apiKeyInput.type === 'password';
+        apiKeyInput.type = isPwd ? 'text' : 'password';
+        btnToggleKey.textContent = isPwd ? '隱藏' : '顯示';
     });
 
-    function escapeHtml(value) {
-        return String(value ?? '').replace(/[&<>'"]/g, char => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-        })[char]);
-    }
-
-    function sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    function getCards() {
-        return Array.from(document.querySelectorAll('.product-card'));
-    }
-
-    function totalImageCount() {
-        return getCards().reduce((sum, card) => sum + (card._images?.length || 0), 0);
-    }
-
-    function saveProductConfigs() {
-        const configs = getCards().map(card => ({
-            name: card.querySelector('.item-name-input')?.value.trim() || '',
-            hint: card.querySelector('.hint-input')?.value.trim() || ''
-        }));
-        localStorage.setItem('inventory_product_configs_v2', JSON.stringify(configs));
-    }
-
-    function loadProductConfigs() {
-        try {
-            const saved = JSON.parse(localStorage.getItem('inventory_product_configs_v2') || 'null');
-            if (Array.isArray(saved) && saved.length) return saved;
-        } catch (_) {}
-        return Array.from({ length: 9 }, (_, index) => ({ name: `商品項目 ${index + 1}`, hint: '' }));
-    }
-
-    function resetCardResult(card, message = '等待辨識') {
-        card._result = null;
-        card._error = '';
-        card._manuallyEdited = false;
-        const badge = card.querySelector('.count-badge');
-        const countInput = card.querySelector('.count-input');
-        const notes = card.querySelector('.card-notes');
-        badge.textContent = '-';
-        badge.className = 'count-badge';
-        countInput.value = '';
-        countInput.disabled = true;
-        notes.textContent = message;
-    }
-
-    function createCard(config = {}) {
-        const card = document.createElement('div');
-        card.className = 'product-card';
-        card._images = [];
-        card._result = null;
-        card._error = '';
-        card._manuallyEdited = false;
-        const title = config.name || `自訂商品 ${getCards().length + 1}`;
-        const hint = config.hint || '';
-
-        card.innerHTML = `
-            <div class="card-header">
-                <input type="text" class="item-name-input" value="${escapeHtml(title)}" aria-label="商品名稱">
-                <button class="btn-delete" type="button" title="刪除區域" aria-label="刪除區域">&times;</button>
-            </div>
-            <input type="text" class="hint-input" value="${escapeHtml(hint)}" placeholder="辨識提示（選填）：例如只數紫色外盒，不數瓶身">
-            <div class="drop-zone" tabindex="0" role="button" aria-label="上傳商品照片">
-                <div class="drop-prompt">點擊或拖曳照片至此<br><span class="helper-text">每格最多 ${MAX_IMAGES_PER_CARD} 張；不同照片會分開計數後加總</span></div>
-                <input type="file" class="file-input" accept="image/jpeg,image/png,image/webp" multiple>
-            </div>
-            <div class="thumb-grid"></div>
-            <div class="helper-text">請勿用不同角度重複拍到同一批商品，否則會重複加總。</div>
-            <div class="card-footer">
-                <div class="status-row">
-                    <span class="count-badge">-</span>
-                    <label>數量：<input type="number" min="0" step="1" class="count-input" disabled aria-label="可人工修正的商品數量"></label>
-                </div>
-                <div class="card-notes">等待上傳照片</div>
-            </div>
-        `;
-
-        gridContainer.appendChild(card);
-        bindCardEvents(card);
-        return card;
-    }
-
-    function bindCardEvents(card) {
-        const dropZone = card.querySelector('.drop-zone');
-        const fileInput = card.querySelector('.file-input');
-        const deleteBtn = card.querySelector('.btn-delete');
-        const nameInput = card.querySelector('.item-name-input');
-        const hintInput = card.querySelector('.hint-input');
-        const countInput = card.querySelector('.count-input');
-
-        const openPicker = () => {
-            if (!isRunning) fileInput.click();
-        };
-        dropZone.addEventListener('click', openPicker);
-        dropZone.addEventListener('keydown', event => {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                openPicker();
-            }
-        });
-        dropZone.addEventListener('dragover', event => {
-            event.preventDefault();
-            if (!isRunning) dropZone.classList.add('dragover');
-        });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-        dropZone.addEventListener('drop', event => {
-            event.preventDefault();
-            dropZone.classList.remove('dragover');
-            if (!isRunning) handleFiles(Array.from(event.dataTransfer.files), card);
-        });
-        fileInput.addEventListener('change', event => {
-            handleFiles(Array.from(event.target.files), card);
-            fileInput.value = '';
-        });
-        deleteBtn.addEventListener('click', () => {
-            if (isRunning) return;
-            card.remove();
-            saveProductConfigs();
-            refreshSummary();
-        });
-        nameInput.addEventListener('input', saveProductConfigs);
-        hintInput.addEventListener('input', saveProductConfigs);
-        countInput.addEventListener('input', () => {
-            if (!card._result) return;
-            card._manuallyEdited = true;
-            const badge = card.querySelector('.count-badge');
-            badge.textContent = '人工修正';
-            badge.className = 'count-badge warning';
-            refreshSummary();
-        });
-    }
-
-    function loadImage(dataUrl) {
-        return new Promise((resolve, reject) => {
-            const image = new Image();
-            image.onload = () => resolve(image);
-            image.onerror = () => reject(new Error('無法讀取照片，請改用 JPG、PNG 或 WebP 格式'));
-            image.src = dataUrl;
-        });
-    }
-
-    function readAsDataUrl(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(new Error('照片讀取失敗'));
-            reader.readAsDataURL(file);
-        });
-    }
-
-    async function compressImage(file) {
-        const originalDataUrl = await readAsDataUrl(file);
-        const image = await loadImage(originalDataUrl);
-        let width = image.naturalWidth;
-        let height = image.naturalHeight;
-        const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(width, height));
-        width = Math.max(1, Math.round(width * scale));
-        height = Math.max(1, Math.round(height * scale));
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext('2d', { alpha: false });
-        context.fillStyle = '#ffffff';
-        context.fillRect(0, 0, width, height);
-        context.imageSmoothingEnabled = true;
-        context.imageSmoothingQuality = 'high';
-        context.drawImage(image, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-
-        return {
-            id: ++imageSeq,
-            name: file.name,
-            dataUrl,
-            base64: dataUrl.split(',')[1],
-            width,
-            height
-        };
-    }
-
-    async function handleFiles(files, card) {
-        if (!files.length) return;
-        const validFiles = files.filter(file => file.type.startsWith('image/'));
-        if (!validFiles.length) {
-            alert('請上傳 JPG、PNG 或 WebP 圖片');
-            return;
-        }
-
-        const cardRemaining = MAX_IMAGES_PER_CARD - card._images.length;
-        const totalRemaining = MAX_TOTAL_IMAGES - totalImageCount();
-        const allowed = Math.max(0, Math.min(cardRemaining, totalRemaining));
-        if (allowed === 0) {
-            alert(`每個商品最多 ${MAX_IMAGES_PER_CARD} 張、單次全部商品合計最多 ${MAX_TOTAL_IMAGES} 張照片`);
-            return;
-        }
-
-        const selected = validFiles.slice(0, allowed);
-        const notes = card.querySelector('.card-notes');
-        notes.textContent = `正在整理 ${selected.length} 張照片...`;
-
-        try {
-            const compressed = [];
-            for (const file of selected) compressed.push(await compressImage(file));
-            card._images.push(...compressed);
-            renderThumbnails(card);
-            resetCardResult(card, `已加入 ${card._images.length} 張照片`);
-            if (validFiles.length > allowed) {
-                alert(`已達上限，本次只加入前 ${allowed} 張照片`);
-            }
-            refreshSummary();
-        } catch (error) {
-            notes.textContent = error.message;
-            alert(error.message);
-        }
-    }
-
-    function renderThumbnails(card) {
-        const grid = card.querySelector('.thumb-grid');
-        const prompt = card.querySelector('.drop-prompt');
-        grid.innerHTML = '';
-
-        card._images.forEach((imageData, index) => {
-            const item = document.createElement('div');
-            item.className = 'thumb-item';
-            item.innerHTML = `
-                <img src="${imageData.dataUrl}" alt="第 ${index + 1} 張商品照片">
-                <span class="thumb-index">照片 ${index + 1}</span>
-                <button class="thumb-remove" type="button" aria-label="移除第 ${index + 1} 張照片">&times;</button>
-            `;
-            item.querySelector('.thumb-remove').addEventListener('click', event => {
-                event.stopPropagation();
-                if (isRunning) return;
-                card._images = card._images.filter(image => image.id !== imageData.id);
-                renderThumbnails(card);
-                resetCardResult(card, card._images.length ? `剩下 ${card._images.length} 張照片` : '等待上傳照片');
-                refreshSummary();
-            });
-            grid.appendChild(item);
-        });
-
-        prompt.innerHTML = card._images.length
-            ? `已加入 ${card._images.length} 張<br><span class="helper-text">點擊或拖曳可繼續新增</span>`
-            : `點擊或拖曳照片至此<br><span class="helper-text">每格最多 ${MAX_IMAGES_PER_CARD} 張；不同照片會分開計數後加總</span>`;
-    }
-
-    class ApiError extends Error {
-        constructor(message, status = 0) {
-            super(message);
-            this.name = 'ApiError';
-            this.status = status;
-        }
-    }
-
-    function friendlyApiMessage(status, rawMessage = '') {
-        if (status === 400) return `請求格式錯誤：${rawMessage || '請檢查照片後再試'}`;
-        if (status === 401 || status === 403) return 'API Key 無效、沒有權限，或此網頁來源未被允許';
-        if (status === 404) return '目前模型無法使用，請重新測試連線';
-        if (status === 429) return 'API 使用次數過多，請稍候再試';
-        if (status >= 500) return 'Google AI 暫時忙碌，已自動重試仍未成功';
-        return rawMessage || `連線錯誤（${status || '未知'}）`;
-    }
-
-    async function fetchJson(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
-        const controller = new AbortController();
-        activeControllers.add(controller);
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-        try {
-            const response = await fetch(url, { ...options, signal: controller.signal });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                const rawMessage = data.error?.message || '';
-                throw new ApiError(friendlyApiMessage(response.status, rawMessage), response.status);
-            }
-            return data;
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                if (stopRequested) throw new ApiError('已停止辨識', -1);
-                throw new ApiError('連線逾時，請檢查網路或減少照片後重試', 408);
-            }
-            throw error;
-        } finally {
-            clearTimeout(timer);
-            activeControllers.delete(controller);
-        }
-    }
-
-    async function resolveBestModel(apiKey) {
-        try {
-            const data = await fetchJson('https://generativelanguage.googleapis.com/v1beta/models', {
-                headers: { 'x-goog-api-key': apiKey }
-            }, 15000);
-            const available = new Set((data.models || [])
-                .filter(model => model.supportedGenerationMethods?.includes('generateContent'))
-                .map(model => model.name.replace('models/', '')));
-            activeModelName = MODEL_PRIORITY.find(model => available.has(model)) || MODEL_PRIORITY[0];
-        } catch (error) {
-            if ([401, 403].includes(error.status)) throw error;
-            activeModelName = MODEL_PRIORITY[0];
-        }
-        sessionStorage.setItem('gemini_active_model', activeModelName);
-        return activeModelName;
-    }
-
     btnTestKey.addEventListener('click', async () => {
-        const apiKey = apiKeyInput.value.trim();
-        if (!apiKey) {
-            alert('請先輸入 Gemini API Key');
-            apiKeyInput.focus();
-            return;
-        }
+        const key = apiKeyInput.value.trim();
+        if (!key) { alert('請先輸入 API Key！'); apiKeyInput.focus(); return; }
+        const model = modelSelect.value;
 
         btnTestKey.disabled = true;
         btnTestKey.textContent = '連線中...';
         diagBox.style.display = 'block';
         diagBox.style.background = '#f1f5f9';
         diagBox.style.color = '#475569';
-        diagBox.textContent = '正在測試連線...';
+        diagBox.innerHTML = '⏳ 正在向 Google 驗證連線...';
 
         try {
-            const model = await resolveBestModel(apiKey);
-            const startedAt = performance.now();
-            await fetchJson(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+            const t0 = performance.now();
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: '只回答 OK' }] }],
-                    generationConfig: { maxOutputTokens: 8, thinkingConfig: { thinkingLevel: 'LOW' } }
-                })
-            }, 15000);
-            const latency = Math.round(performance.now() - startedAt);
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: "ping" }] }] })
+            });
+            const latency = Math.round(performance.now() - t0);
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error?.message || `HTTP ${res.status}`);
+            }
+
             diagBox.style.background = '#dcfce7';
             diagBox.style.color = '#166534';
-            diagBox.innerHTML = `連線成功<br>模型：<code>${escapeHtml(model)}</code>　延遲：${latency} ms`;
-        } catch (error) {
+            diagBox.innerHTML = `✅ <b>連線測試成功！</b><br>• 使用模型：<code>${model}</code><br>• 伺服器延遲：${latency} ms<br>• 狀態：一律採單次批次呼叫，不易撞到頻率限制`;
+        } catch (err) {
             diagBox.style.background = '#fee2e2';
             diagBox.style.color = '#991b1b';
-            diagBox.textContent = `連線失敗：${error.message}`;
+            diagBox.innerHTML = `❌ <b>連線失敗</b>：${err.message}`;
         } finally {
             btnTestKey.disabled = false;
-            btnTestKey.textContent = '測試連線';
+            btnTestKey.textContent = '🧪 測試連線';
         }
     });
 
-    function makeCountingPrompt(productName, hint, imageCount) {
-        return `你是商品庫存照片清點員。請獨立清點接下來 ${imageCount} 張照片中的「${productName}」。
-
-清點規則：
-1. 每張照片是不同批次，必須分開計數，不可把不同照片的物品混在一起。
-2. 只計算照片中清楚可辨認、彼此獨立的實體商品。不要計算包裝上的印刷圖片、標誌、倒影、影子或螢幕畫面。
-3. 不可推測紙箱內、遮擋後方或畫面外看不到的數量；局部入鏡但能確定是獨立一件時才可計入。
-4. 從左上到右下分區掃描，再反方向檢查一次。regionCounts 填入各區小計，count 必須等於小計總和。
-5. 若照片模糊、重疊嚴重、商品不確定或無法可靠清點，needsReview 必須為 true，confidence 使用 medium 或 low，不可假裝精準。
-6. 每張照片都必須回傳一筆，imageIndex 依序從 1 到 ${imageCount}。
-${hint ? `7. 使用者補充規則：${hint}` : ''}`;
-    }
-
-    function makeResponseSchema(imageCount) {
-        return {
-            type: 'object',
-            properties: {
-                images: {
-                    type: 'array',
-                    minItems: imageCount,
-                    maxItems: imageCount,
-                    items: {
-                        type: 'object',
-                        properties: {
-                            imageIndex: { type: 'integer', minimum: 1, maximum: imageCount },
-                            count: { type: 'integer', minimum: 0 },
-                            regionCounts: { type: 'array', items: { type: 'integer', minimum: 0 } },
-                            confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
-                            needsReview: { type: 'boolean' },
-                            note: { type: 'string' }
-                        },
-                        required: ['imageIndex', 'count', 'regionCounts', 'confidence', 'needsReview', 'note']
-                    }
-                }
-            },
-            required: ['images']
-        };
-    }
-
-    function parseGeminiText(data) {
-        const text = data.candidates?.[0]?.content?.parts
-            ?.filter(part => typeof part.text === 'string')
-            .map(part => part.text)
-            .join('')
-            .trim();
-        if (!text) {
-            const reason = data.promptFeedback?.blockReason || data.candidates?.[0]?.finishReason || '沒有回傳結果';
-            throw new ApiError(`AI 未完成辨識：${reason}`);
-        }
-        try {
-            return JSON.parse(text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, ''));
-        } catch (_) {
-            throw new ApiError('AI 回傳格式異常，請重新辨識');
-        }
-    }
-
-    function normalizeCardResult(parsed, expectedCount) {
-        if (!Array.isArray(parsed.images)) throw new ApiError('AI 回傳內容不完整');
-        const byIndex = new Map(parsed.images.map(item => [Number(item.imageIndex), item]));
-        const normalized = [];
-
-        for (let index = 1; index <= expectedCount; index++) {
-            const raw = byIndex.get(index);
-            if (!raw || !Number.isFinite(Number(raw.count))) throw new ApiError(`照片 ${index} 沒有有效數量`);
-            const count = Math.max(0, Math.round(Number(raw.count)));
-            const regionCounts = Array.isArray(raw.regionCounts)
-                ? raw.regionCounts.map(value => Math.max(0, Math.round(Number(value) || 0)))
-                : [];
-            const regionTotal = regionCounts.reduce((sum, value) => sum + value, 0);
-            const mismatch = regionCounts.length > 0 && regionTotal !== count;
-            normalized.push({
-                imageIndex: index,
-                count,
-                regionCounts,
-                confidence: ['high', 'medium', 'low'].includes(raw.confidence) ? raw.confidence : 'low',
-                needsReview: Boolean(raw.needsReview) || mismatch,
-                note: `${raw.note || '清點完成'}${mismatch ? `；分區小計 ${regionTotal} 與總數不一致` : ''}`
-            });
-        }
-        return normalized;
-    }
-
-    async function requestCardCount(apiKey, card) {
-        const productName = card.querySelector('.item-name-input').value.trim() || '此商品';
-        const hint = card.querySelector('.hint-input').value.trim();
-        const parts = [{ text: makeCountingPrompt(productName, hint, card._images.length) }];
-        card._images.forEach((imageData, index) => {
-            parts.push({ text: `照片 ${index + 1}` });
-            parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageData.base64 } });
-        });
-
-        const requestBody = {
-            contents: [{ role: 'user', parts }],
-            generationConfig: {
-                responseMimeType: 'application/json',
-                responseJsonSchema: makeResponseSchema(card._images.length),
-                temperature: 0,
-                maxOutputTokens: 1024,
-                thinkingConfig: { thinkingLevel: 'LOW' },
-                mediaResolution: 'MEDIA_RESOLUTION_HIGH'
-            }
-        };
-
-        let lastError;
-        for (let attempt = 0; attempt <= RETRY_COUNT; attempt++) {
-            if (stopRequested) throw new ApiError('已停止辨識', -1);
-            try {
-                const data = await fetchJson(
-                    `https://generativelanguage.googleapis.com/v1beta/models/${activeModelName}:generateContent`,
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-                        body: JSON.stringify(requestBody)
-                    }
-                );
-                return normalizeCardResult(parseGeminiText(data), card._images.length);
-            } catch (error) {
-                lastError = error;
-                const retryable = [408, 429, 500, 502, 503, 504].includes(error.status);
-                if (!retryable || attempt >= RETRY_COUNT || stopRequested) throw error;
-                await sleep(error.status === 429 ? 2200 : 1000);
-            }
-        }
-        throw lastError;
-    }
-
-    function confidenceLabel(value) {
-        return ({ high: '高', medium: '中', low: '低' })[value] || '低';
-    }
-
-    async function processCard(apiKey, card) {
-        const badge = card.querySelector('.count-badge');
-        const countInput = card.querySelector('.count-input');
-        const notes = card.querySelector('.card-notes');
-        badge.textContent = '辨識中';
-        badge.className = 'count-badge running';
-        countInput.disabled = true;
-        notes.textContent = `正在清點 ${card._images.length} 張照片...`;
-        card._error = '';
-
-        try {
-            const imageResults = await requestCardCount(apiKey, card);
-            const total = imageResults.reduce((sum, item) => sum + item.count, 0);
-            const needsReview = imageResults.some(item => item.needsReview || item.confidence !== 'high');
-            const detail = imageResults.map(item =>
-                `照片${item.imageIndex}：${item.count} 件（信心${confidenceLabel(item.confidence)}${item.needsReview ? '，請確認' : ''}）${item.note ? `－${item.note}` : ''}`
-            ).join('；');
-
-            card._result = { total, needsReview, imageResults, detail };
-            card._manuallyEdited = false;
-            countInput.value = total;
-            countInput.disabled = false;
-            badge.textContent = needsReview ? '請人工確認' : '辨識完成';
-            badge.className = needsReview ? 'count-badge warning' : 'count-badge success';
-            notes.textContent = detail;
-            return { status: needsReview ? 'review' : 'success' };
-        } catch (error) {
-            card._result = null;
-            card._error = error.message;
-            badge.textContent = stopRequested ? '已停止' : '辨識失敗';
-            badge.className = 'count-badge error';
-            notes.textContent = error.message;
-            return { status: stopRequested ? 'cancelled' : 'failed' };
-        } finally {
-            refreshSummary();
-        }
-    }
-
-    function setProgress(done, total) {
-        progressTrack.style.display = total ? 'block' : 'none';
-        progressBar.style.width = total ? `${Math.round(done / total * 100)}%` : '0%';
-    }
-
-    async function runWithConcurrency(items, worker, onProgress) {
-        let cursor = 0;
-        let done = 0;
-        const results = [];
-        const runners = Array.from({ length: Math.min(CONCURRENCY, items.length) }, async () => {
-            while (!stopRequested) {
-                const index = cursor++;
-                if (index >= items.length) return;
-                results[index] = await worker(items[index], index);
-                done++;
-                onProgress(done, items.length);
-            }
-        });
-        await Promise.all(runners);
-        return results;
-    }
-
-    btnRunAll.addEventListener('click', async () => {
-        if (isRunning) return;
-        const apiKey = apiKeyInput.value.trim();
-        if (!apiKey) {
-            alert('請先輸入 Gemini API Key');
-            apiKeyInput.focus();
-            return;
-        }
-
-        const cards = getCards().filter(card => card._images.length > 0);
-        if (!cards.length) {
-            alert('請至少上傳一張商品照片');
-            return;
-        }
-
-        isRunning = true;
-        stopRequested = false;
-        btnRunAll.disabled = true;
-        btnAddCard.disabled = true;
-        btnClearImages.disabled = true;
-        btnCancel.style.display = 'inline-block';
-        setProgress(0, cards.length);
-        overallStatus.textContent = '正在準備辨識...';
-
-        try {
-            await resolveBestModel(apiKey);
-            const startedAt = performance.now();
-            const results = await runWithConcurrency(cards, card => processCard(apiKey, card), (done, total) => {
-                setProgress(done, total);
-                overallStatus.textContent = `已完成 ${done} / ${total} 個商品區域`;
-            });
-
-            if (stopRequested) {
-                overallStatus.textContent = '辨識已停止；已完成的結果仍保留';
-            } else {
-                const success = results.filter(result => result?.status === 'success').length;
-                const review = results.filter(result => result?.status === 'review').length;
-                const failed = results.filter(result => result?.status === 'failed').length;
-                const elapsed = ((performance.now() - startedAt) / 1000).toFixed(1);
-                overallStatus.textContent = `完成：${success} 項通過、${review} 項需確認、${failed} 項失敗（${elapsed} 秒）`;
-            }
-        } catch (error) {
-            overallStatus.textContent = `無法開始辨識：${error.message}`;
-        } finally {
-            isRunning = false;
-            btnRunAll.disabled = false;
-            btnAddCard.disabled = false;
-            btnClearImages.disabled = false;
-            btnCancel.style.display = 'none';
-            activeControllers.clear();
-        }
-    });
-
-    btnCancel.addEventListener('click', () => {
-        stopRequested = true;
-        btnCancel.disabled = true;
-        overallStatus.textContent = '正在停止辨識...';
-        activeControllers.forEach(controller => controller.abort());
-        setTimeout(() => { btnCancel.disabled = false; }, 500);
-    });
+    for (let i = 1; i <= 9; i++) createCard(`商品項目 ${i}`);
 
     btnAddCard.addEventListener('click', () => {
-        createCard({ name: `自訂商品 ${getCards().length + 1}`, hint: '' });
-        saveProductConfigs();
-        refreshSummary();
+        createCard(`自訂商品 ${document.querySelectorAll('.product-card').length + 1}`);
     });
 
     btnClearImages.addEventListener('click', () => {
         if (!confirm('確定要清空所有已上傳的照片嗎？')) return;
-        getCards().forEach(card => {
-            card._images = [];
-            renderThumbnails(card);
-            resetCardResult(card, '等待上傳照片');
+        document.querySelectorAll('.product-card').forEach(card => {
+            delete card.dataset.base64;
+            delete card.dataset.hasImage;
+            card.querySelector('.preview-img').style.display = 'none';
+            card.querySelector('.drop-prompt').style.display = 'block';
+            card.querySelector('.count-badge').className = 'count-badge';
+            card.querySelector('.count-badge').textContent = '-';
+            card.querySelector('.card-notes').textContent = '等待上傳照片';
+            card.classList.remove('processing');
         });
-        setProgress(0, 0);
-        overallStatus.textContent = '準備就緒';
-        refreshSummary();
+        summaryTbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">尚未執行辨識</td></tr>`;
     });
 
-    function getSummaryRows() {
-        return getCards().map((card, index) => {
-            const name = card.querySelector('.item-name-input').value.trim() || `項目 ${index + 1}`;
-            const countInput = card.querySelector('.count-input');
-            if (!card._images.length) return { id: index + 1, name, count: '-', note: '未上傳照片' };
-            if (card._error) return { id: index + 1, name, count: '-', note: `辨識失敗：${card._error}` };
-            if (!card._result) return { id: index + 1, name, count: '-', note: '尚未辨識' };
-            const count = countInput.value === '' ? card._result.total : Math.max(0, Math.round(Number(countInput.value) || 0));
-            const prefix = card._manuallyEdited ? '人工修正；' : (card._result.needsReview ? '建議人工確認；' : '');
-            return { id: index + 1, name, count, note: `${prefix}${card._result.detail}` };
-        });
+    function createCard(title) {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        card.innerHTML = `
+            <div class="card-header">
+                <input type="text" class="item-name-input" value="${title}">
+                <button class="btn-delete" type="button" title="刪除">&times;</button>
+            </div>
+            <div class="drop-zone">
+                <div class="drop-prompt">📷 點擊或拖曳照片至此</div>
+                <img class="preview-img" alt="預覽圖">
+                <input type="file" class="file-input" accept="image/*">
+            </div>
+            <div class="card-footer">
+                <div class="status-row">
+                    <span style="color: var(--text-muted); font-size: 13px;">數量：</span>
+                    <span class="count-badge">-</span>
+                </div>
+                <div class="card-notes">等待上傳照片</div>
+            </div>
+        `;
+        gridContainer.appendChild(card);
+        bindCardEvents(card);
     }
 
-    function refreshSummary() {
-        const rows = getSummaryRows();
+    function bindCardEvents(card) {
+        const dropZone = card.querySelector('.drop-zone');
+        const fileInput = card.querySelector('.file-input');
+        const deleteBtn = card.querySelector('.btn-delete');
+
+        dropZone.addEventListener('click', (e) => {
+            if (e.target !== deleteBtn) fileInput.click();
+        });
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0], card);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) handleFile(e.target.files[0], card);
+        });
+        deleteBtn.addEventListener('click', () => card.remove());
+    }
+
+    function handleFile(file, card) {
+        const reader = new FileReader();
+        const preview = card.querySelector('.preview-img');
+        const prompt = card.querySelector('.drop-prompt');
+        const notes = card.querySelector('.card-notes');
+        const badge = card.querySelector('.count-badge');
+
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                const maxLen = 1024;
+                let w = img.width, h = img.height;
+                if (w > maxLen || h > maxLen) {
+                    if (w > h) { h = Math.round((h * maxLen) / w); w = maxLen; }
+                    else { w = Math.round((w * maxLen) / h); h = maxLen; }
+                }
+
+                canvas.width = w; canvas.height = h;
+                ctx.drawImage(img, 0, 0, w, h);
+
+                const base64Jpeg = canvas.toDataURL('image/jpeg', 0.85);
+                card.dataset.base64 = base64Jpeg.split(',')[1];
+                card.dataset.hasImage = "true";
+
+                if (preview) { preview.src = base64Jpeg; preview.style.display = 'block'; }
+                if (prompt) prompt.style.display = 'none';
+                if (notes) notes.textContent = '照片已就緒';
+                if (badge) { badge.textContent = '-'; badge.className = 'count-badge'; }
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ---- 核心：把所有商品照片打包成「單一次」API 請求 ----
+    function buildBatchPrompt(items) {
+        let header = `你是一個極度嚴謹且高精準度的視覺庫存清點專家。以下會依序提供 ${items.length} 張商品照片，每張照片前面都會標示它的「項目編號」與「商品名稱」。
+
+【強制清點規則】：
+1. 嚴禁直接粗估或用「矩陣總格數」直覺相減。
+2. 若商品排列成矩陣/多直排/多橫列：逐排逐列清點，特別檢查每一排頭尾是否缺漏，並寫出加總算式（例如 8+10+10+10=38）。
+3. 若商品為散落擺放，請逐一清點。
+4. 若畫面中沒有對應商品，count 填 0。
+
+請針對「每一張」照片各自輸出一筆結果，並嚴格只回傳以下 JSON 格式（陣列順序需與照片提供順序一致）：
+{
+  "results": [
+    { "index": 項目編號整數, "count": 實際總數整數, "notes": "逐排清點說明與缺漏備註" }
+  ]
+}
+
+以下是各張照片：`;
+        return header;
+    }
+
+    async function callGeminiBatch(apiKey, model, items, onStatus) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+        const parts = [{ text: buildBatchPrompt(items) }];
+        items.forEach(it => {
+            parts.push({ text: `\n【項目編號 ${it.index}｜商品名稱：${it.name}】` });
+            parts.push({ inline_data: { mime_type: "image/jpeg", data: it.base64 } });
+        });
+
+        const body = {
+            contents: [{ parts }],
+            generationConfig: {
+                response_mime_type: "application/json",
+                response_schema: {
+                    type: "OBJECT",
+                    properties: {
+                        results: {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    index: { type: "INTEGER" },
+                                    count: { type: "INTEGER" },
+                                    notes: { type: "STRING" }
+                                },
+                                required: ["index", "count"]
+                            }
+                        }
+                    },
+                    required: ["results"]
+                }
+            }
+        };
+
+        const maxRetries = 4;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (resp.status === 429) {
+                // 遇到頻率限制：優先看 Retry-After，沒有的話用指數退避
+                const retryAfterHeader = resp.headers.get('Retry-After');
+                let waitMs = retryAfterHeader ? parseFloat(retryAfterHeader) * 1000 : (2000 * Math.pow(2, attempt));
+                if (!waitMs || isNaN(waitMs)) waitMs = 2000 * Math.pow(2, attempt);
+                waitMs = Math.min(waitMs, 30000);
+                if (attempt < maxRetries) {
+                    onStatus && onStatus(`⏳ 觸發頻率限制，${Math.round(waitMs/1000)} 秒後自動重試 (第 ${attempt + 1} 次)`);
+                    await sleep(waitMs);
+                    continue;
+                }
+            }
+
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                const msg = err.error?.message || `HTTP ${resp.status}`;
+                if ((resp.status === 500 || resp.status === 503) && attempt < maxRetries) {
+                    onStatus && onStatus(`⚠️ 伺服器忙碌，重試中 (第 ${attempt + 1} 次)`);
+                    await sleep(1500 * (attempt + 1));
+                    continue;
+                }
+                throw new Error(msg);
+            }
+
+            const data = await resp.json();
+            let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+            rawText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+            const parsed = JSON.parse(rawText);
+            return parsed.results || [];
+        }
+        throw new Error('已達最大重試次數，請稍後再試');
+    }
+
+    btnRunAll.addEventListener('click', async () => {
+        const apiKey = apiKeyInput.value.trim();
+        const model = modelSelect.value;
+        if (!apiKey) { alert('請先輸入 Gemini API Key！'); apiKeyInput.focus(); return; }
+
+        const cards = Array.from(document.querySelectorAll('.product-card'));
+        const activeCards = cards.filter(c => c.dataset.hasImage === "true");
+
+        if (activeCards.length === 0) {
+            alert('請至少在一格區域上傳商品照片！');
+            return;
+        }
+
+        btnRunAll.disabled = true;
+        progressTrack.style.display = 'block';
+        progressBar.classList.add('indeterminate');
+        overallStatus.textContent = `⏳ 正在以單一請求送出 ${activeCards.length} 張照片...`;
+
         summaryTbody.innerHTML = '';
-        rows.forEach(row => {
+        const tableRows = cards.map((card, idx) => {
             const tr = document.createElement('tr');
+            const name = card.querySelector('.item-name-input')?.value.trim() || `項目 ${idx + 1}`;
+            const hasImg = card.dataset.hasImage === "true";
             tr.innerHTML = `
-                <td>${row.id}</td>
-                <td><strong>${escapeHtml(row.name)}</strong></td>
-                <td><b style="color:#2563eb; font-size:15px;">${escapeHtml(row.count === '-' ? '-' : `${row.count} 件`)}</b></td>
-                <td style="color:var(--text-muted);">${escapeHtml(row.note)}</td>
+                <td>${idx + 1}</td>
+                <td><strong>${name}</strong></td>
+                <td><b style="color: #64748b;">${hasImg ? '辨識中...' : '-'}</b></td>
+                <td style="color: var(--text-muted);">${hasImg ? '請稍候' : '未上傳圖片'}</td>
             `;
             summaryTbody.appendChild(tr);
+            if (hasImg) {
+                card.classList.add('processing');
+                const badge = card.querySelector('.count-badge');
+                badge.textContent = '辨識中...'; badge.className = 'count-badge running';
+            }
+            return tr;
         });
-    }
 
-    async function copyText(text) {
-        if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(text);
-            return;
-        }
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        textarea.remove();
-    }
+        const items = activeCards.map((card, idx) => ({
+            index: cards.indexOf(card),
+            name: card.querySelector('.item-name-input')?.value.trim() || `項目 ${cards.indexOf(card) + 1}`,
+            base64: card.dataset.base64
+        }));
 
-    btnCopyList.addEventListener('click', async () => {
-        const rows = getSummaryRows().filter(row => row.count !== '-');
-        if (!rows.length) {
-            alert('尚無辨識結果可複製');
-            return;
-        }
-        const text = ['【商品數量辨識清單】', ...rows.map(row => `${row.name}：${row.count} 件`)].join('\n');
         try {
-            await copyText(text);
-            alert('已複製清單');
-        } catch (_) {
-            alert('無法自動複製，請直接選取結果清單');
+            const results = await callGeminiBatch(apiKey, model, items, (msg) => {
+                overallStatus.textContent = msg;
+            });
+
+            const resultMap = {};
+            results.forEach(r => { resultMap[r.index] = r; });
+
+            cards.forEach((card, idx) => {
+                if (card.dataset.hasImage !== "true") return;
+                const name = card.querySelector('.item-name-input')?.value.trim() || `項目 ${idx + 1}`;
+                const badge = card.querySelector('.count-badge');
+                const notes = card.querySelector('.card-notes');
+                const row = tableRows[idx];
+                const r = resultMap[idx];
+
+                card.classList.remove('processing');
+
+                if (!r) {
+                    badge.textContent = '失敗'; badge.className = 'count-badge error';
+                    notes.textContent = '模型未回傳此項目結果';
+                    row.innerHTML = `<td>${idx+1}</td><td><strong>${name}</strong></td><td><b style="color:var(--danger);">錯誤</b></td><td style="color:var(--danger);">模型未回傳此項目結果</td>`;
+                    return;
+                }
+
+                const count = typeof r.count === 'number' ? r.count : 0;
+                const noteText = r.notes || '辨識完成';
+                badge.textContent = `${count} 件`; badge.className = 'count-badge success';
+                notes.textContent = noteText;
+                row.innerHTML = `<td>${idx+1}</td><td><strong>${name}</strong></td><td><b style="color:#2563eb;font-size:15px;">${count} 件</b></td><td style="color:var(--text-muted);">${noteText}</td>`;
+            });
+
+            overallStatus.textContent = '✅ 全部辨識完成！';
+        } catch (err) {
+            overallStatus.textContent = `❌ 辨識失敗：${err.message}`;
+            cards.forEach((card, idx) => {
+                if (card.dataset.hasImage !== "true") return;
+                card.classList.remove('processing');
+                const badge = card.querySelector('.count-badge');
+                badge.textContent = '失敗'; badge.className = 'count-badge error';
+                card.querySelector('.card-notes').textContent = `錯誤: ${err.message}`;
+                tableRows[idx].innerHTML = `<td>${idx+1}</td><td><strong>${card.querySelector('.item-name-input').value}</strong></td><td><b style="color:var(--danger);">錯誤</b></td><td style="color:var(--danger);">${err.message}</td>`;
+            });
+        } finally {
+            progressBar.classList.remove('indeterminate');
+            setTimeout(() => { progressTrack.style.display = 'none'; }, 800);
+            btnRunAll.disabled = false;
         }
     });
 
-    function csvCell(value) {
-        return `"${String(value ?? '').replace(/"/g, '""')}"`;
-    }
+    btnCopyList.addEventListener('click', () => {
+        const rows = summaryTbody.querySelectorAll('tr');
+        if (rows.length === 0 || rows[0].innerText.includes('尚未執行')) {
+            alert('尚無辨識結果可複製'); return;
+        }
+        let textOutput = "【商品數量辨識清單】\n";
+        rows.forEach(tr => {
+            const cols = tr.querySelectorAll('td');
+            if (cols.length >= 4) {
+                textOutput += `${cols[1].innerText}：${cols[2].innerText} (${cols[3].innerText})\n`;
+            }
+        });
+        navigator.clipboard.writeText(textOutput).then(() => alert('已成功複製清單至剪貼簿！'));
+    });
 
     btnExportCsv.addEventListener('click', () => {
-        const rows = getSummaryRows().filter(row => row.count !== '-');
-        if (!rows.length) {
-            alert('尚無辨識結果可匯出');
-            return;
+        const rows = summaryTbody.querySelectorAll('tr');
+        if (rows.length === 0 || rows[0].innerText.includes('尚未執行')) {
+            alert('尚無辨識結果可匯出'); return;
         }
-        const lines = [
-            ['編號', '商品名稱', '數量', '辨識狀態／備註'],
-            ...rows.map(row => [row.id, row.name, row.count, row.note])
-        ];
-        const csv = '\uFEFF' + lines.map(line => line.map(csvCell).join(',')).join('\r\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
+        let csvContent = "\uFEFF編號,商品名稱,辨識數量,逐排說明\n";
+        rows.forEach(tr => {
+            const cols = tr.querySelectorAll('td');
+            if (cols.length >= 4) {
+                csvContent += `"${cols[0].innerText}","${cols[1].innerText}","${cols[2].innerText}","${cols[3].innerText}"\n`;
+            }
+        });
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
-        link.href = url;
-        link.download = `商品清點報表_${new Date().toISOString().slice(0, 10)}.csv`;
-        document.body.appendChild(link);
+        link.href = URL.createObjectURL(blob);
+        link.download = `商品清點報表_${new Date().toISOString().slice(0,10)}.csv`;
         link.click();
-        link.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
     });
-
-    loadProductConfigs().forEach(createCard);
-    refreshSummary();
-})();
 </script>
 </body>
 </html>
