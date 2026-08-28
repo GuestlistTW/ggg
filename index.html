@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 商品數量視覺辨識系統 (Gemini API 完整版)</title>
+    <title>AI 商品數量視覺辨識系統 (Gemini 高速防呆版)</title>
     <style>
         :root {
             --primary: #2563eb; --primary-hover: #1d4ed8;
@@ -160,7 +160,6 @@
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 let w = img.width, h = img.height;
-                // 將圖片縮小加速上傳
                 if (w > 800 || h > 800) {
                     if (w > h) { h = Math.round(h * 800 / w); w = 800; } 
                     else { w = Math.round(w * 800 / h); h = 800; }
@@ -174,7 +173,10 @@
                 card.querySelector('.preview-img').src = e.target.result;
                 card.querySelector('.preview-img').style.display = 'block';
                 card.querySelector('.drop-prompt').style.display = 'none';
-                card.querySelector('.card-notes').textContent = '照片就緒';
+                
+                // 防呆檢查
+                const notes = card.querySelector('.card-notes');
+                if (notes) notes.textContent = '照片就緒';
             };
             img.src = e.target.result;
         };
@@ -188,7 +190,7 @@
             body: JSON.stringify({
                 contents: [{
                     parts: [
-                        { text: `請辨識照片中的【${itemName}】數量，並以 JSON 格式 {"count": 數字, "notes": "簡短說明"} 回傳。忽略無關雜物。` },
+                        { text: `請辨識照片中的【${itemName}】數量，並以 JSON 格式 {"count": 數字, "notes": "簡短說明"} 回傳。忽略無關雜物。如果沒有則回傳 0。` },
                         { inline_data: { mime_type: "image/jpeg", data: base64Image } }
                     ]
                 }],
@@ -225,19 +227,24 @@
                 return;
             }
 
-            badge.textContent = '分析中';
-            notes.textContent = 'API 傳輸中...';
+            // 防呆檢查
+            if (badge) badge.textContent = '分析中';
+            if (notes) notes.textContent = 'API 傳輸中...';
 
             try {
                 const res = await callGemini(apiKey, card.dataset.base64, name);
-                badge.textContent = `${res.count} 件`;
-                badge.className = 'count-badge success';
-                notes.textContent = res.notes || '成功';
+                if (badge) {
+                    badge.textContent = `${res.count} 件`;
+                    badge.className = 'count-badge success';
+                }
+                if (notes) notes.textContent = res.notes || '成功';
                 results[index] = { index: index+1, name, count: res.count, notes: res.notes };
             } catch (err) {
-                badge.textContent = '錯誤';
-                badge.className = 'count-badge error';
-                notes.textContent = '失敗，請確認 API Key';
+                if (badge) {
+                    badge.textContent = '錯誤';
+                    badge.className = 'count-badge error';
+                }
+                if (notes) notes.textContent = '失敗，請確認 API Key';
                 results[index] = { index: index+1, name, count: '錯誤', notes: '辨識失敗' };
             }
         }));
