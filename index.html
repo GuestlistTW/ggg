@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 商品數量視覺辨識系統 (Gemini 2.0 自動適配版)</title>
+    <title>AI 商品數量視覺辨識系統 (Gemini 3.6 Flash 版)</title>
     <style>
         :root {
             --primary: #2563eb; --primary-hover: #1d4ed8;
@@ -19,7 +19,6 @@
         header h1 { font-size: 24px; margin-bottom: 8px; }
         header p { color: var(--text-muted); font-size: 14px; }
 
-        /* API 設定與診斷列 */
         .api-bar {
             background: var(--card-bg);
             border: 1px solid var(--border);
@@ -132,7 +131,7 @@
 <div class="container">
     <header>
         <h1>AI 商品數量視覺辨識系統</h1>
-        <p>已支援最新 Gemini 2.0 視覺模型，具備智慧自動模型適配功能</p>
+        <p>已切換為最新 <b>Gemini 3.6 Flash</b> 引擎</p>
     </header>
 
     <div class="api-bar">
@@ -141,7 +140,7 @@
             <div class="api-input-wrap">
                 <input type="password" id="api-key" class="api-input" placeholder="貼上 AIzaSy 開頭的金鑰" autocomplete="off">
                 <button class="btn-secondary" id="btn-toggle-key" type="button">顯示</button>
-                <button class="btn-secondary" id="btn-test-key" type="button" style="background: #e0f2fe; color: #0284c7; border-color: #bae6fd;">🧪 測試連線與自動配對</button>
+                <button class="btn-secondary" id="btn-test-key" type="button" style="background: #e0f2fe; color: #0284c7; border-color: #bae6fd;">🧪 測試連線</button>
             </div>
         </div>
         <div id="diag-box" class="diag-box"></div>
@@ -186,10 +185,10 @@
     const overallStatus = document.getElementById('overall-status');
     const summaryTbody = document.getElementById('summary-tbody');
     
-    let activeModelName = 'gemini-2.0-flash'; // 預設使用最新 2.0 Flash
+    // 直接指定最新指定的模型
+    let activeModelName = 'gemini-3.6-flash';
     let cardSeq = 0;
 
-    // 1. 讀取儲存的 API Key
     apiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
     apiKeyInput.addEventListener('input', () => {
         localStorage.setItem('gemini_api_key', apiKeyInput.value.trim());
@@ -201,17 +200,16 @@
         btnToggleKey.textContent = isPwd ? '隱藏' : '顯示';
     });
 
-    // 2. 智慧偵測可用模型
+    // 取得支援 generateContent 的模型清單
     async function resolveBestModel(apiKey) {
         try {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-            if (!res.ok) throw new Error(`無法取得模型清單: HTTP ${res.status}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             const models = data.models || [];
             
-            // 優先挑選支援 generateContent 的 flash 模型
-            const candidate = models.find(m => m.name.includes('gemini-2.0-flash') && m.supportedGenerationMethods?.includes('generateContent'))
-                           || models.find(m => m.name.includes('gemini-2.5-flash') && m.supportedGenerationMethods?.includes('generateContent'))
+            // 優先挑選支援 generateContent 的 3.6-flash 或最新 flash 模型
+            const candidate = models.find(m => m.name.includes('gemini-3.6-flash') && m.supportedGenerationMethods?.includes('generateContent'))
                            || models.find(m => m.name.includes('flash') && m.supportedGenerationMethods?.includes('generateContent'))
                            || models.find(m => m.supportedGenerationMethods?.includes('generateContent'));
             
@@ -219,12 +217,12 @@
                 return candidate.name.replace('models/', '');
             }
         } catch (e) {
-            console.warn('自動偵測模型失敗，改用預設 gemini-2.0-flash', e);
+            console.warn('動態獲取失敗，採用預設 gemini-3.6-flash', e);
         }
-        return 'gemini-2.0-flash';
+        return 'gemini-3.6-flash';
     }
 
-    // 3. 連線測試按鈕
+    // 測試連線
     btnTestKey.addEventListener('click', async () => {
         const key = apiKeyInput.value.trim();
         if (!key) {
@@ -238,10 +236,9 @@
         diagBox.style.display = 'block';
         diagBox.style.background = '#f1f5f9';
         diagBox.style.color = '#475569';
-        diagBox.innerHTML = '⏳ 正在向 Google 查詢支援的模型並發送測試請求...';
+        diagBox.innerHTML = '⏳ 正在向 Google 驗證 API Key 與 gemini-3.6-flash 連線...';
 
         try {
-            // 自動偵測可用模型
             activeModelName = await resolveBestModel(key);
 
             const startTime = performance.now();
@@ -262,7 +259,7 @@
 
             diagBox.style.background = '#dcfce7';
             diagBox.style.color = '#166534';
-            diagBox.innerHTML = `✅ <b>連線測試成功！</b><br>• 成功配對模型：<code>${activeModelName}</code><br>• 伺服器響應時間：${elapsed} ms<br>• 狀態：已可正常進行商品數量清點！`;
+            diagBox.innerHTML = `✅ <b>連線測試成功！</b><br>• 使用模型：<code>${activeModelName}</code><br>• 延遲：${elapsed} ms<br>• 狀態：可正常進行辨識！`;
         } catch (err) {
             console.error(err);
             diagBox.style.background = '#fee2e2';
@@ -270,11 +267,10 @@
             diagBox.innerHTML = `❌ <b>連線失敗</b>：${err.message}`;
         } finally {
             btnTestKey.disabled = false;
-            btnTestKey.textContent = '🧪 測試連線與自動配對';
+            btnTestKey.textContent = '🧪 測試連線';
         }
     });
 
-    // 4. 初始化 9 個卡片
     for (let i = 1; i <= 9; i++) createCard(`商品項目 ${i}`);
 
     btnAddCard.addEventListener('click', () => {
@@ -342,13 +338,15 @@
                 const ctx = canvas.getContext('2d');
                 
                 const maxLen = 800;
-                let w = img.width, h = img.height;
+                let w = img.width;
+                let h = img.height;
                 if (w > maxLen || h > maxLen) {
                     if (w > h) { h = Math.round((h * maxLen) / w); w = maxLen; }
                     else { w = Math.round((w * maxLen) / h); h = maxLen; }
                 }
 
-                canvas.width = w; canvas.height = h;
+                canvas.width = w;
+                canvas.height = h;
                 ctx.drawImage(img, 0, 0, w, h);
 
                 const base64Jpeg = canvas.toDataURL('image/jpeg', 0.75);
@@ -365,7 +363,6 @@
         reader.readAsDataURL(file);
     }
 
-    // 5. 呼叫 Gemini 核心
     async function requestGemini(apiKey, base64Data, itemName) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${activeModelName}:generateContent?key=${apiKey}`;
         const prompt = `請仔細清點這張照片中名為「${itemName}」或畫面主商品的精準數量。請忽略背景雜物。如果沒有任何商品請回傳 0。必須嚴格只回傳 JSON 格式：{"count": 整數, "notes": "簡短說明"}`;
@@ -395,7 +392,6 @@
         return JSON.parse(rawText);
     }
 
-    // 6. 執行全區域辨識
     btnRunAll.addEventListener('click', async () => {
         const apiKey = apiKeyInput.value.trim();
         if (!apiKey) {
@@ -457,7 +453,6 @@
 
         await Promise.all(tasks);
 
-        // 渲染匯總表格
         summaryTbody.innerHTML = '';
         summaryList.forEach(item => {
             if (!item) return;
