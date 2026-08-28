@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 商品數量視覺辨識系統 (Gemini 3.6 Flash 版)</title>
+    <title>AI 商品數量視覺辨識系統 (矩陣高精準清點版)</title>
     <style>
         :root {
             --primary: #2563eb; --primary-hover: #1d4ed8;
@@ -12,13 +12,14 @@
             --success: #16a34a; --danger: #dc2626;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: var(--bg); color: var(--text-main); padding: 24px 16px; }
         .container { max-width: 1200px; margin: 0 auto; }
         header { text-align: center; margin-bottom: 24px; }
         header h1 { font-size: 24px; margin-bottom: 8px; }
         header p { color: var(--text-muted); font-size: 14px; }
 
+        /* API 設定與診斷列 */
         .api-bar {
             background: var(--card-bg);
             border: 1px solid var(--border);
@@ -45,6 +46,7 @@
             line-height: 1.5;
         }
 
+        /* 控制面板 */
         .control-panel {
             display: flex;
             justify-content: space-between;
@@ -59,7 +61,7 @@
             gap: 12px;
         }
 
-        .btn-group { display: flex; gap: 10px; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
         button { padding: 9px 16px; border-radius: 8px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; }
         .btn-primary { background-color: var(--primary); color: #fff; }
         .btn-primary:hover:not(:disabled) { background-color: var(--primary-hover); }
@@ -67,6 +69,7 @@
         .btn-secondary { background-color: #f1f5f9; color: var(--text-main); border: 1px solid var(--border); }
         .btn-secondary:hover { background-color: #e2e8f0; }
 
+        /* 九宮格區域 */
         .grid-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -112,8 +115,9 @@
         .count-badge { background: #f1f5f9; color: var(--text-muted); padding: 3px 10px; border-radius: 9999px; font-weight: bold; font-size: 13px; }
         .count-badge.success { background: #dcfce7; color: var(--success); }
         .count-badge.error { background: #fee2e2; color: var(--danger); }
-        .card-notes { font-size: 12px; color: var(--text-muted); min-height: 16px; word-break: break-all; }
+        .card-notes { font-size: 12px; color: var(--text-muted); min-height: 16px; line-height: 1.4; word-break: break-all; }
 
+        /* 結果清單面板 */
         .summary-panel {
             background: var(--card-bg);
             border: 1px solid var(--border);
@@ -121,8 +125,9 @@
             padding: 20px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
-        .summary-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px; text-align: left; }
-        .summary-table th, .summary-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+        .summary-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+        .summary-table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+        .summary-table th, .summary-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
         .summary-table th { background: #f8fafc; color: var(--text-muted); }
     </style>
 </head>
@@ -130,8 +135,8 @@
 
 <div class="container">
     <header>
-        <h1>AI 商品數量視覺辨識系統</h1>
-        <p>已切換為最新 <b>Gemini 3.6 Flash</b> 引擎</p>
+        <h1>AI 商品數量視覺辨識系統 (高精準矩陣清點版)</h1>
+        <p>搭載逐排行列分析演算法，精準辨識密集排列與邊角缺漏商品</p>
     </header>
 
     <div class="api-bar">
@@ -150,6 +155,7 @@
         <div id="overall-status" style="font-size: 14px; color: var(--text-muted); font-weight: 500;">⚪ 準備就緒</div>
         <div class="btn-group">
             <button class="btn-secondary" id="btn-add-card" type="button">+ 新增區域</button>
+            <button class="btn-secondary" id="btn-clear-images" type="button">清空照片</button>
             <button class="btn-primary" id="btn-run-all" type="button">🚀 開始辨識</button>
         </div>
     </div>
@@ -157,18 +163,24 @@
     <div class="grid-container" id="grid-container"></div>
 
     <div class="summary-panel">
-        <h2>辨識結果清單</h2>
+        <div class="summary-header">
+            <h2>辨識結果清單</h2>
+            <div class="btn-group">
+                <button class="btn-secondary" id="btn-copy-list" type="button" style="font-size: 13px; padding: 6px 12px;">📋 複製清單</button>
+                <button class="btn-secondary" id="btn-export-csv" type="button" style="font-size: 13px; padding: 6px 12px;">💾 匯出 CSV</button>
+            </div>
+        </div>
         <table class="summary-table">
             <thead>
                 <tr>
-                    <th style="width: 80px;">編號</th>
-                    <th>商品名稱</th>
+                    <th style="width: 70px;">編號</th>
+                    <th style="width: 200px;">商品名稱</th>
                     <th style="width: 120px;">辨識數量</th>
-                    <th>備註說明 / 狀態</th>
+                    <th>逐排清點說明 / 缺漏備註</th>
                 </tr>
             </thead>
             <tbody id="summary-tbody">
-                <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">尚未執行辨識</td></tr>
+                <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">尚未執行辨識</td></tr>
             </tbody>
         </table>
     </div>
@@ -181,11 +193,13 @@
     const btnTestKey = document.getElementById('btn-test-key');
     const diagBox = document.getElementById('diag-box');
     const btnAddCard = document.getElementById('btn-add-card');
+    const btnClearImages = document.getElementById('btn-clear-images');
     const btnRunAll = document.getElementById('btn-run-all');
     const overallStatus = document.getElementById('overall-status');
     const summaryTbody = document.getElementById('summary-tbody');
+    const btnCopyList = document.getElementById('btn-copy-list');
+    const btnExportCsv = document.getElementById('btn-export-csv');
     
-    // 直接指定最新指定的模型
     let activeModelName = 'gemini-3.6-flash';
     let cardSeq = 0;
 
@@ -200,7 +214,6 @@
         btnToggleKey.textContent = isPwd ? '隱藏' : '顯示';
     });
 
-    // 取得支援 generateContent 的模型清單
     async function resolveBestModel(apiKey) {
         try {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
@@ -208,7 +221,6 @@
             const data = await res.json();
             const models = data.models || [];
             
-            // 優先挑選支援 generateContent 的 3.6-flash 或最新 flash 模型
             const candidate = models.find(m => m.name.includes('gemini-3.6-flash') && m.supportedGenerationMethods?.includes('generateContent'))
                            || models.find(m => m.name.includes('flash') && m.supportedGenerationMethods?.includes('generateContent'))
                            || models.find(m => m.supportedGenerationMethods?.includes('generateContent'));
@@ -217,12 +229,11 @@
                 return candidate.name.replace('models/', '');
             }
         } catch (e) {
-            console.warn('動態獲取失敗，採用預設 gemini-3.6-flash', e);
+            console.warn('動態配對失敗，採用預設 gemini-3.6-flash', e);
         }
         return 'gemini-3.6-flash';
     }
 
-    // 測試連線
     btnTestKey.addEventListener('click', async () => {
         const key = apiKeyInput.value.trim();
         if (!key) {
@@ -236,7 +247,7 @@
         diagBox.style.display = 'block';
         diagBox.style.background = '#f1f5f9';
         diagBox.style.color = '#475569';
-        diagBox.innerHTML = '⏳ 正在向 Google 驗證 API Key 與 gemini-3.6-flash 連線...';
+        diagBox.innerHTML = '⏳ 正在向 Google 驗證 API Key 與連線...';
 
         try {
             activeModelName = await resolveBestModel(key);
@@ -259,7 +270,7 @@
 
             diagBox.style.background = '#dcfce7';
             diagBox.style.color = '#166534';
-            diagBox.innerHTML = `✅ <b>連線測試成功！</b><br>• 使用模型：<code>${activeModelName}</code><br>• 延遲：${elapsed} ms<br>• 狀態：可正常進行辨識！`;
+            diagBox.innerHTML = `✅ <b>連線測試成功！</b><br>• 成功配對模型：<code>${activeModelName}</code><br>• 伺服器延遲：${elapsed} ms<br>• 狀態：可正常進行辨識！`;
         } catch (err) {
             console.error(err);
             diagBox.style.background = '#fee2e2';
@@ -275,6 +286,20 @@
 
     btnAddCard.addEventListener('click', () => {
         createCard(`自訂商品 ${document.querySelectorAll('.product-card').length + 1}`);
+    });
+
+    btnClearImages.addEventListener('click', () => {
+        if (!confirm('確定要清空所有已上傳的照片嗎？')) return;
+        document.querySelectorAll('.product-card').forEach(card => {
+            delete card.dataset.base64;
+            delete card.dataset.hasImage;
+            card.querySelector('.preview-img').style.display = 'none';
+            card.querySelector('.drop-prompt').style.display = 'block';
+            card.querySelector('.count-badge').className = 'count-badge';
+            card.querySelector('.count-badge').textContent = '-';
+            card.querySelector('.card-notes').textContent = '等待上傳照片';
+        });
+        summaryTbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">尚未執行辨識</td></tr>`;
     });
 
     function createCard(title) {
@@ -337,7 +362,7 @@
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 
-                const maxLen = 800;
+                const maxLen = 1024;
                 let w = img.width;
                 let h = img.height;
                 if (w > maxLen || h > maxLen) {
@@ -349,7 +374,7 @@
                 canvas.height = h;
                 ctx.drawImage(img, 0, 0, w, h);
 
-                const base64Jpeg = canvas.toDataURL('image/jpeg', 0.75);
+                const base64Jpeg = canvas.toDataURL('image/jpeg', 0.85);
                 card.dataset.base64 = base64Jpeg.split(',')[1];
                 card.dataset.hasImage = "true";
 
@@ -363,9 +388,27 @@
         reader.readAsDataURL(file);
     }
 
+    // 核心辨識函式（採用強制思維鏈與逐排清點 Prompt）
     async function requestGemini(apiKey, base64Data, itemName) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${activeModelName}:generateContent?key=${apiKey}`;
-        const prompt = `請仔細清點這張照片中名為「${itemName}」或畫面主商品的精準數量。請忽略背景雜物。如果沒有任何商品請回傳 0。必須嚴格只回傳 JSON 格式：{"count": 整數, "notes": "簡短說明"}`;
+        
+        const prompt = `你是一個極度嚴謹且高精準度的視覺庫存清點專家。
+請仔細清點這張照片中名為「${itemName}」或畫面核心商品物件的真實數量。
+
+【強制清點規則】：
+1. 嚴禁直接粗估或透過「矩陣總格數」直覺相減！
+2. 若商品排列成矩陣/多直排/多橫列：
+   - 請由左至右（或由上至下）逐排逐列清點「每一排」的真實個數。
+   - 特別仔細檢查每一排的「最頂部」與「最底部」是否有缺漏空位（例如角落缺一盒）。
+   - 請將每一排實際數到的數量寫出加總算式（例如：8 + 10 + 10 + 10 = 38）。
+3. 若商品為散落擺放，請逐一標記清點。
+4. 若無任何商品，數量填 0。
+
+請嚴格只回傳 JSON 格式（不要包含多餘 Markdown 代碼或解釋）：
+{
+  "count": 實際總數整數,
+  "notes": "逐排清點說明與缺漏備註（例如：共4直排，左1排8個(左上與左下缺漏)、第2排10個、第3排10個、第4排10個，合計38個）"
+}`;
 
         const resp = await fetch(url, {
             method: 'POST',
@@ -409,7 +452,7 @@
         }
 
         btnRunAll.disabled = true;
-        overallStatus.textContent = `⏳ 正在透過 ${activeModelName} 同時辨識 ${activeCards.length} 個區域...`;
+        overallStatus.textContent = `⏳ 正在透過 ${activeModelName} 逐排精準分析 ${activeCards.length} 個區域...`;
         summaryTbody.innerHTML = '';
 
         const summaryList = new Array(cards.length);
@@ -426,7 +469,7 @@
             }
 
             if (badge) badge.textContent = '分析中';
-            if (notes) notes.textContent = 'AI 處理中...';
+            if (notes) notes.textContent = 'AI 逐排清點中...';
 
             try {
                 const res = await requestGemini(apiKey, card.dataset.base64, name);
@@ -460,7 +503,7 @@
             tr.innerHTML = `
                 <td>${item.seq}</td>
                 <td><strong>${item.name}</strong></td>
-                <td><b>${item.count}</b></td>
+                <td><b style="color: #2563eb; font-size: 15px;">${item.count}</b></td>
                 <td style="color: var(--text-muted);">${item.notes}</td>
             `;
             summaryTbody.appendChild(tr);
@@ -468,6 +511,42 @@
 
         overallStatus.textContent = '✅ 全部辨識完成！';
         btnRunAll.disabled = false;
+    });
+
+    btnCopyList.addEventListener('click', () => {
+        const rows = summaryTbody.querySelectorAll('tr');
+        if (rows.length === 0 || rows[0].innerText.includes('尚未執行')) {
+            alert('尚無辨識結果可複製'); return;
+        }
+        let textOutput = "【商品數量辨識清單】\n";
+        rows.forEach(tr => {
+            const cols = tr.querySelectorAll('td');
+            if (cols.length >= 4) {
+                textOutput += `${cols[1].innerText}：${cols[2].innerText} (${cols[3].innerText})\n`;
+            }
+        });
+        navigator.clipboard.writeText(textOutput).then(() => {
+            alert('已成功複製清單至剪貼簿！');
+        });
+    });
+
+    btnExportCsv.addEventListener('click', () => {
+        const rows = summaryTbody.querySelectorAll('tr');
+        if (rows.length === 0 || rows[0].innerText.includes('尚未執行')) {
+            alert('尚無辨識結果可匯出'); return;
+        }
+        let csvContent = "\uFEFF編號,商品名稱,辨識數量,逐排說明\n";
+        rows.forEach(tr => {
+            const cols = tr.querySelectorAll('td');
+            if (cols.length >= 4) {
+                csvContent += `"${cols[0].innerText}","${cols[1].innerText}","${cols[2].innerText}","${cols[3].innerText}"\n`;
+            }
+        });
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `商品清點報表_${new Date().toISOString().slice(0,10)}.csv`;
+        link.click();
     });
 </script>
 </body>
