@@ -166,9 +166,9 @@
                 <button class="btn-secondary" id="btn-test-key" type="button" style="background: #e0f2fe; color: #0284c7; border-color: #bae6fd;">🧪 測試連線</button>
             </div>
             <select id="model-select" class="model-select">
-                <option value="gemini-2.5-flash">gemini-2.5-flash（推薦，快且準）</option>
-                <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite（最快，額度最寬）</option>
-                <option value="gemini-2.5-pro">gemini-2.5-pro（較準，額度很少，5次/分鐘）</option>
+                <option value="gemini-3.6-flash">gemini-3.6-flash（推薦，目前主力模型）</option>
+                <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite（最快，額度較寬）</option>
+                <option value="gemini-3.7-flash">gemini-3.7-flash（最新，較貴）</option>
             </select>
         </div>
         <div id="diag-box" class="diag-box"></div>
@@ -235,7 +235,7 @@
 
     // 記住上次選擇的 API Key 與模型
     apiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
-    modelSelect.value = localStorage.getItem('gemini_model') || 'gemini-2.5-flash';
+    modelSelect.value = localStorage.getItem('gemini_model') || 'gemini-3.6-flash';
     apiKeyInput.addEventListener('input', () => localStorage.setItem('gemini_api_key', apiKeyInput.value.trim()));
     modelSelect.addEventListener('change', () => localStorage.setItem('gemini_model', modelSelect.value));
 
