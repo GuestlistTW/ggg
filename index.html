@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 商品數量視覺辨識系統 (除錯診斷增強版)</title>
+    <title>AI 商品數量視覺辨識系統 (Gemini 2.0 自動適配版)</title>
     <style>
         :root {
             --primary: #2563eb; --primary-hover: #1d4ed8;
@@ -19,26 +19,32 @@
         header h1 { font-size: 24px; margin-bottom: 8px; }
         header p { color: var(--text-muted); font-size: 14px; }
 
-        /* API 設定列 */
+        /* API 設定與診斷列 */
         .api-bar {
             background: var(--card-bg);
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 16px 20px;
             margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .api-input-row {
             display: flex;
             align-items: center;
             gap: 10px;
             flex-wrap: wrap;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
         .api-input-wrap { flex: 1; min-width: 260px; display: flex; gap: 8px; }
-        .api-input { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; }
+        .api-input { flex: 1; padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 14px; }
         
-        /* 診斷訊息框 */
-        .diag-status { width: 100%; font-size: 13px; margin-top: 6px; padding: 6px 12px; border-radius: 6px; display: none; }
-        .diag-success { background: #dcfce7; color: #166534; display: block; }
-        .diag-error { background: #fee2e2; color: #991b1b; display: block; }
+        .diag-box {
+            margin-top: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+            line-height: 1.5;
+        }
 
         .control-panel {
             display: flex;
@@ -126,17 +132,19 @@
 <div class="container">
     <header>
         <h1>AI 商品數量視覺辨識系統</h1>
-        <p>請貼上剛剛申請的 API Key（AIzaSy... 開頭），並可先按診斷測試連線狀態</p>
+        <p>已支援最新 Gemini 2.0 視覺模型，具備智慧自動模型適配功能</p>
     </header>
 
     <div class="api-bar">
-        <label for="api-key" style="font-weight: 600; font-size: 14px;">Gemini API Key：</label>
-        <div class="api-input-wrap">
-            <input type="password" id="api-key" class="api-input" placeholder="貼上 AIzaSy 開頭的金鑰" autocomplete="off">
-            <button class="btn-secondary" id="btn-toggle-key" type="button">顯示</button>
-            <button class="btn-secondary" id="btn-test-key" type="button" style="background: #e0f2fe; color: #0284c7; border-color: #bae6fd;">🧪 測試連線</button>
+        <div class="api-input-row">
+            <label for="api-key" style="font-weight: 600; font-size: 14px;">Gemini API Key：</label>
+            <div class="api-input-wrap">
+                <input type="password" id="api-key" class="api-input" placeholder="貼上 AIzaSy 開頭的金鑰" autocomplete="off">
+                <button class="btn-secondary" id="btn-toggle-key" type="button">顯示</button>
+                <button class="btn-secondary" id="btn-test-key" type="button" style="background: #e0f2fe; color: #0284c7; border-color: #bae6fd;">🧪 測試連線與自動配對</button>
+            </div>
         </div>
-        <div id="diag-status" class="diag-status"></div>
+        <div id="diag-box" class="diag-box"></div>
     </div>
 
     <div class="control-panel">
@@ -172,14 +180,16 @@
     const apiKeyInput = document.getElementById('api-key');
     const btnToggleKey = document.getElementById('btn-toggle-key');
     const btnTestKey = document.getElementById('btn-test-key');
-    const diagStatus = document.getElementById('diag-status');
+    const diagBox = document.getElementById('diag-box');
     const btnAddCard = document.getElementById('btn-add-card');
     const btnRunAll = document.getElementById('btn-run-all');
     const overallStatus = document.getElementById('overall-status');
     const summaryTbody = document.getElementById('summary-tbody');
+    
+    let activeModelName = 'gemini-2.0-flash'; // 預設使用最新 2.0 Flash
     let cardSeq = 0;
 
-    // 1. 本地讀取與儲存 Key
+    // 1. 讀取儲存的 API Key
     apiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
     apiKeyInput.addEventListener('input', () => {
         localStorage.setItem('gemini_api_key', apiKeyInput.value.trim());
@@ -191,7 +201,30 @@
         btnToggleKey.textContent = isPwd ? '隱藏' : '顯示';
     });
 
-    // 2. 測試 API 連線按鈕 (診斷核心)
+    // 2. 智慧偵測可用模型
+    async function resolveBestModel(apiKey) {
+        try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+            if (!res.ok) throw new Error(`無法取得模型清單: HTTP ${res.status}`);
+            const data = await res.json();
+            const models = data.models || [];
+            
+            // 優先挑選支援 generateContent 的 flash 模型
+            const candidate = models.find(m => m.name.includes('gemini-2.0-flash') && m.supportedGenerationMethods?.includes('generateContent'))
+                           || models.find(m => m.name.includes('gemini-2.5-flash') && m.supportedGenerationMethods?.includes('generateContent'))
+                           || models.find(m => m.name.includes('flash') && m.supportedGenerationMethods?.includes('generateContent'))
+                           || models.find(m => m.supportedGenerationMethods?.includes('generateContent'));
+            
+            if (candidate) {
+                return candidate.name.replace('models/', '');
+            }
+        } catch (e) {
+            console.warn('自動偵測模型失敗，改用預設 gemini-2.0-flash', e);
+        }
+        return 'gemini-2.0-flash';
+    }
+
+    // 3. 連線測試按鈕
     btnTestKey.addEventListener('click', async () => {
         const key = apiKeyInput.value.trim();
         if (!key) {
@@ -201,12 +234,18 @@
         }
 
         btnTestKey.disabled = true;
-        btnTestKey.textContent = '連線中...';
-        diagStatus.className = 'diag-status';
-        diagStatus.style.display = 'none';
+        btnTestKey.textContent = '連線測試中...';
+        diagBox.style.display = 'block';
+        diagBox.style.background = '#f1f5f9';
+        diagBox.style.color = '#475569';
+        diagBox.innerHTML = '⏳ 正在向 Google 查詢支援的模型並發送測試請求...';
 
         try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+            // 自動偵測可用模型
+            activeModelName = await resolveBestModel(key);
+
+            const startTime = performance.now();
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${activeModelName}:generateContent?key=${key}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -214,31 +253,29 @@
                 })
             });
 
+            const elapsed = Math.round(performance.now() - startTime);
+
             if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.error?.message || `HTTP ${res.status} 錯誤`);
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error?.message || `HTTP ${res.status}`);
             }
 
-            diagStatus.className = 'diag-status diag-success';
-            diagStatus.innerHTML = '✅ <b>連線完全正常！</b> API Key 正確無誤，且 Google 伺服器已正常響應，可以開始上傳照片辨識。';
+            diagBox.style.background = '#dcfce7';
+            diagBox.style.color = '#166534';
+            diagBox.innerHTML = `✅ <b>連線測試成功！</b><br>• 成功配對模型：<code>${activeModelName}</code><br>• 伺服器響應時間：${elapsed} ms<br>• 狀態：已可正常進行商品數量清點！`;
         } catch (err) {
             console.error(err);
-            diagStatus.className = 'diag-status diag-error';
-            if (err.message.includes('Failed to fetch')) {
-                diagStatus.innerHTML = '❌ <b>連線被阻擋 (Failed to fetch)</b>：這通常是因為你的瀏覽器安裝了<b>擋廣告外掛 (如 AdBlock)</b>，請在此網頁暫停外掛，或換無痕視窗測試。';
-            } else {
-                diagStatus.innerHTML = `❌ <b>API 報錯</b>：${err.message}`;
-            }
+            diagBox.style.background = '#fee2e2';
+            diagBox.style.color = '#991b1b';
+            diagBox.innerHTML = `❌ <b>連線失敗</b>：${err.message}`;
         } finally {
             btnTestKey.disabled = false;
-            btnTestKey.textContent = '🧪 測試連線';
+            btnTestKey.textContent = '🧪 測試連線與自動配對';
         }
     });
 
-    // 3. 初始化 9 個卡片
-    for (let i = 1; i <= 9; i++) {
-        createCard(`商品項目 ${i}`);
-    }
+    // 4. 初始化 9 個卡片
+    for (let i = 1; i <= 9; i++) createCard(`商品項目 ${i}`);
 
     btnAddCard.addEventListener('click', () => {
         createCard(`自訂商品 ${document.querySelectorAll('.product-card').length + 1}`);
@@ -255,7 +292,7 @@
             </div>
             <div class="drop-zone">
                 <div class="drop-prompt">📷 點擊或拖曳照片至此</div>
-                <img class="preview-img" alt="商品照片">
+                <img class="preview-img" alt="預覽圖">
                 <input type="file" class="file-input" accept="image/*">
             </div>
             <div class="card-footer">
@@ -266,7 +303,6 @@
                 <div class="card-notes">等待上傳照片</div>
             </div>
         `;
-
         gridContainer.appendChild(card);
         bindCardEvents(card);
     }
@@ -279,30 +315,16 @@
         dropZone.addEventListener('click', (e) => {
             if (e.target !== deleteBtn) fileInput.click();
         });
-
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
-        });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('dragover');
-        });
-
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.classList.remove('dragover');
-            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                handleFile(e.dataTransfer.files[0], card);
-            }
+            if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0], card);
         });
-
         fileInput.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files[0]) {
-                handleFile(e.target.files[0], card);
-            }
+            if (e.target.files[0]) handleFile(e.target.files[0], card);
         });
-
         deleteBtn.addEventListener('click', () => card.remove());
     }
 
@@ -319,17 +341,14 @@
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 
-                // 圖片壓縮控制在 800px 以內
                 const maxLen = 800;
-                let w = img.width;
-                let h = img.height;
+                let w = img.width, h = img.height;
                 if (w > maxLen || h > maxLen) {
                     if (w > h) { h = Math.round((h * maxLen) / w); w = maxLen; }
                     else { w = Math.round((w * maxLen) / h); h = maxLen; }
                 }
 
-                canvas.width = w;
-                canvas.height = h;
+                canvas.width = w; canvas.height = h;
                 ctx.drawImage(img, 0, 0, w, h);
 
                 const base64Jpeg = canvas.toDataURL('image/jpeg', 0.75);
@@ -346,9 +365,9 @@
         reader.readAsDataURL(file);
     }
 
-    // 4. 呼叫 Gemini 1.5 Flash 核心 (加入自動清除 Markdown 外框)
+    // 5. 呼叫 Gemini 核心
     async function requestGemini(apiKey, base64Data, itemName) {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${activeModelName}:generateContent?key=${apiKey}`;
         const prompt = `請仔細清點這張照片中名為「${itemName}」或畫面主商品的精準數量。請忽略背景雜物。如果沒有任何商品請回傳 0。必須嚴格只回傳 JSON 格式：{"count": 整數, "notes": "簡短說明"}`;
 
         const resp = await fetch(url, {
@@ -372,12 +391,11 @@
 
         const data = await resp.json();
         let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-        // 清除可能包覆的 ```json 標記
         rawText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
         return JSON.parse(rawText);
     }
 
-    // 5. 執行辨識流程
+    // 6. 執行全區域辨識
     btnRunAll.addEventListener('click', async () => {
         const apiKey = apiKeyInput.value.trim();
         if (!apiKey) {
@@ -395,7 +413,7 @@
         }
 
         btnRunAll.disabled = true;
-        overallStatus.textContent = `⏳ 正在同時辨識 ${activeCards.length} 個區域...`;
+        overallStatus.textContent = `⏳ 正在透過 ${activeModelName} 同時辨識 ${activeCards.length} 個區域...`;
         summaryTbody.innerHTML = '';
 
         const summaryList = new Array(cards.length);
