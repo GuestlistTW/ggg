@@ -1,321 +1,457 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>【TW Pride】10/24 週五晚餐名單確認｜Reservation Confirmation</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<style>
-:root{
-  --bg:#0b0c10; --panel:#11131a; --ink:#eef2f7; --muted:#98a2ad; --border:#232635;
-  --good:#22c55e; --warn:#f59e0b; --bad:#ef4444;
-  --r1:#ff6b6b; --r2:#f59e0b; --r3:#f7d154; --r4:#34d399; --r5:#60a5fa; --r6:#a78bfa;
-}
-*{box-sizing:border-box}
-html,body{height:100%;background:var(--bg);color:var(--ink);font-family:"Yu Gothic UI Light","Noto Sans TC","Segoe UI",system-ui,-apple-system,sans-serif}
-body{margin:0}
-.wrap{max-width:1080px;margin:28px auto 96px;padding:0 14px}
-h1{margin:0 0 10px;font-size:28px;letter-spacing:.2px;color:#fff}
-.rule{height:2px;border:0;margin:8px 0 18px;background:linear-gradient(90deg,transparent,var(--r1) 10%,var(--r2),var(--r3),var(--r4),var(--r5),var(--r6),transparent)}
-.card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px;backdrop-filter:blur(10px)}
-.row{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1.6fr) 160px;gap:10px;align-items:end}
-label{font-size:12px;color:var(--muted);margin:0 0 6px;display:block}
-input,button{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0f1117;color:var(--ink);outline:none;font-size:14px}
-button{cursor:pointer}
-.btn{padding:10px 12px;border-radius:12px;font-size:14px}
-.btn-primary{border:1px solid transparent;color:#fff;font-weight:700}
-.btn-search{background:
-  linear-gradient(135deg,#0ea5e9,#22d3ee) padding-box,
-  linear-gradient(135deg,#0ea5e9,#22d3ee) border-box}
-.btn-rainbow{border:1px solid transparent;background:linear-gradient(#161a22,#161a22) padding-box,linear-gradient(90deg,var(--r1),var(--r2),var(--r3),var(--r4),var(--r5),var(--r6)) border-box}
-.btn-rainbow.is-glow{animation:glow 1.2s linear 1}
-@keyframes glow{50%{box-shadow:0 0 16px rgba(96,165,250,.35)}}
-.search-hint{font-size:12px;color:var(--muted);margin:8px 2px 0}
-.res{margin-top:14px;display:flex;flex-direction:column;gap:10px}
-.item{border:1px solid var(--border);border-radius:14px;background:var(--panel);padding:10px}
-.line1{display:grid;grid-template-columns: 200px minmax(0,1fr) 240px;gap:12px;align-items:center}
-.line1 .flag{display:flex;align-items:center;gap:10px;min-width:0}
-.flag .fx{font-size:18px}
-.flag .cty{color:#cfd6dd;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ig{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.line2{margin-top:6px;display:grid;grid-template-columns: 1fr 1fr;gap:10px;align-items:center}
-.status{display:flex;align-items:center;gap:8px;font-size:13px}
-.badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;border:1.5px solid currentColor;background:transparent}
-.badge svg{width:16px;height:16px}
-.badge.good{color:var(--good)} .badge.warn{color:var(--warn)} .badge.bad{color:var(--bad)}
-.linkwrap{justify-self:end}
-.linkwrap a{display:inline-block;padding:7px 10px;border-radius:10px;border:1px solid var(--border);color:#e6f0ff;text-decoration:none;background:#0f1117}
-.linkwrap a:hover{border-color:#5eead4}
-.line3{margin-top:8px;display:grid;grid-template-columns: 1fr 1fr;gap:10px}
-.btn-ghost{background:#0f1117;border:1px solid var(--border);color:#e6f0ff}
-.btn-ghost:hover{border-color:#5eead4}
-.btn-small{font-size:13px;padding:8px 10px;border-radius:10px}
-.btn-invite{background:linear-gradient(#0f1117,#0f1117) padding-box,linear-gradient(90deg,#d8b65f,#fce7b2,#d8b65f) border-box;border:1px solid transparent;color:#fff}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 商品數量視覺辨識系統 (Gemini API 高速版)</title>
+    <style>
+        /* CSS 樣式與上一版完全相同 */
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --success: #16a34a;
+            --danger: #dc2626;
+        }
 
-/* Modal */
-.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50}
-.modal{width:min(560px,92vw);background:#0f1117;border:1px solid var(--border);border-radius:16px;padding:14px}
-.modal h3{margin:0 0 10px}
-.choice{display:flex;gap:10px}
-.choice .opt{flex:1;padding:10px;border-radius:12px;border:1px dashed #2a2f43;color:#8b95a2;background:#0e1118;text-align:center;cursor:pointer;user-select:none}
-.choice .opt.active{color:#fff;border:1px solid transparent;background:linear-gradient(#0e1118,#0e1118) padding-box,linear-gradient(90deg,var(--r1),var(--r2),var(--r3),var(--r4),var(--r5),var(--r6)) border-box}
-.modal textarea{width:100%;min-height:84px;margin-top:10px;border-radius:12px;border:1px solid var(--border);background:#0f1117;color:#fff;padding:10px}
-.modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}
-.note{font-size:12px;color:var(--muted);margin-top:6px}
-.spin{display:inline-block;width:14px;height:14px;border:2px solid #9db4ff;border-right-color:transparent;border-radius:50%;vertical-align:-3px;animation:sp .8s linear infinite}
-@keyframes sp{to{transform:rotate(360deg)}}
-
-/* cats */
-.catDock{position:fixed;left:14px;bottom:14px;display:flex;gap:10px;z-index:60;opacity:.9}
-.catDock img{width:56px;height:auto;filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));cursor:pointer;transition:transform .15s}
-.catDock img:hover{transform:translateY(-2px)}
-
-@media (max-width:960px){
-  .row{grid-template-columns:1fr}
-  .line1{grid-template-columns: 180px 1fr 1fr}
-  .line2,.line3{grid-template-columns:1fr}
-  .linkwrap{justify-self:start}
-}
-</style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+        body { background-color: var(--bg); color: var(--text-main); padding: 24px 16px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 24px; }
+        header h1 { font-size: 24px; margin-bottom: 8px; }
+        header p { color: var(--text-muted); font-size: 14px; }
+        .api-bar { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+        .api-bar label { font-size: 14px; font-weight: 600; white-space: nowrap; }
+        .api-input-wrap { flex: 1; min-width: 260px; display: flex; gap: 8px; }
+        .api-input { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; outline: none; }
+        .api-input:focus { border-color: var(--primary); }
+        .control-panel { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 14px 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); flex-wrap: wrap; gap: 12px; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        button { padding: 9px 16px; border-radius: 8px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-primary { background-color: var(--primary); color: #ffffff; }
+        .btn-primary:hover:not(:disabled) { background-color: var(--primary-hover); }
+        .btn-primary:disabled { background-color: #94a3b8; cursor: not-allowed; }
+        .btn-secondary { background-color: #f1f5f9; color: var(--text-main); border: 1px solid var(--border); }
+        .btn-secondary:hover { background-color: #e2e8f0; }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; margin-bottom: 32px; }
+        .product-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); position: relative; }
+        .card-header { display: flex; align-items: center; gap: 8px; }
+        .item-name-input { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-weight: 600; outline: none; }
+        .item-name-input:focus { border-color: var(--primary); }
+        .btn-delete { background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+        .btn-delete:hover { color: var(--danger); background-color: #fee2e2; }
+        .drop-zone { height: 200px; border: 2px dashed #cbd5e1; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; background: #fafafa; overflow: hidden; transition: all 0.2s; }
+        .drop-zone.dragover { border-color: var(--primary); background-color: #eff6ff; }
+        .drop-prompt { color: var(--text-muted); font-size: 13px; text-align: center; line-height: 1.6; pointer-events: none; padding: 0 12px; }
+        .preview-img { width: 100%; height: 100%; object-fit: contain; display: none; background: #00000008; }
+        .file-input { display: none; }
+        .card-footer { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; border-top: 1px solid #f1f5f9; }
+        .status-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+        .count-badge { background: #f1f5f9; color: var(--text-muted); padding: 3px 10px; border-radius: 9999px; font-weight: bold; font-size: 13px; }
+        .count-badge.success { background: #dcfce7; color: #15803d; }
+        .count-badge.error { background: #fee2e2; color: #b91c1c; }
+        .card-notes { font-size: 12px; color: var(--text-muted); min-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .summary-panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+        .summary-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .summary-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .summary-table th, .summary-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); text-align: left; }
+        .summary-table th { background: #f8fafc; color: var(--text-muted); font-weight: 600; }
+    </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>【TW Pride】10/24 週五晚餐名單確認｜Reservation Confirmation</h1>
-    <hr class="rule"/>
 
-    <div class="card">
-      <div class="row">
-        <div>
-          <label>姓名 / NAME</label>
-          <input id="nameInput" list="nameList" placeholder="輸入或選擇 NAME / Type or choose NAME">
-          <datalist id="nameList"></datalist>
+<div class="container">
+    <header>
+        <h1>AI 商品數量視覺辨識系統 (高速平行處理版)</h1>
+        <p>基於 Gemini 1.5 Flash 多模態視覺模型，支援多格拖曳照片、自動辨識數量與統整清單</p>
+    </header>
+
+    <div class="api-bar">
+        <label for="api-key">Gemini API Key：</label>
+        <div class="api-input-wrap">
+            <input type="password" id="api-key" class="api-input" placeholder="請貼上你的 Gemini API Key (AIzaSy...)" autocomplete="off">
+            <button class="btn-secondary" id="btn-toggle-key" style="padding: 8px 12px;">顯示</button>
         </div>
-        <div>
-          <label>IG 帳號 / IG</label>
-          <input id="igInput" list="igList" placeholder="輸入或選擇 IG / Type or choose IG">
-          <datalist id="igList"></datalist>
-        </div>
-        <div style="align-self:end">
-          <button id="btnSearch" class="btn btn-primary btn-search">搜尋 / Search</button>
-        </div>
-      </div>
-      <div id="hint" class="search-hint">輸入幾個字，會自動帶出可選清單 / Type to see suggestions.</div>
     </div>
 
-    <div id="leaderHead" class="search-hint" style="margin-top:10px"></div>
-    <div id="results" class="res"></div>
-  </div>
-
-  <!-- cats -->
-  <div class="catDock">
-    <img id="catList" alt="Upload List" title="上傳名單 / Upload List">
-    <img id="catInvite" alt="Upload Invite BG" title="上傳邀請函底圖 / Upload Invite Background">
-    <input id="fileList" type="file" accept=".xlsx" style="display:none">
-    <input id="fileInvite" type="file" accept="image/*" style="display:none">
-  </div>
-
-  <!-- confirm modal -->
-  <div id="backdrop" class="backdrop">
-    <div class="modal">
-      <h3>出席確認 / Attendance Confirmation</h3>
-      <div class="choice">
-        <div class="opt" data-v="confirmed">確認訂位，我會參加<br><small>Confirm reservation — I will attend</small></div>
-        <div class="opt" data-v="cancelled">抱歉，無法參加<br><small>Sorry — cannot attend</small></div>
-      </div>
-      <textarea id="note" placeholder="備註 Notes（選填 / optional）"></textarea>
-      <div id="mMsg" class="note"></div>
-      <div class="actions">
-        <button id="mCancel" class="btn btn-ghost btn-small">取消 / Cancel</button>
-        <button id="mSend" class="btn btn-primary btn-rainbow btn-small">送出 / Submit</button>
-      </div>
+    <div class="control-panel">
+        <div id="overall-status" style="font-size: 14px; color: var(--text-muted); font-weight: 500;">
+            ⚪ 準備就緒
+        </div>
+        <div class="btn-group">
+            <button class="btn-secondary" id="btn-add-card">+ 新增自訂區域</button>
+            <button class="btn-secondary" id="btn-clear-images">清空照片</button>
+            <button class="btn-primary" id="btn-run-all">🚀 開始同時辨識</button>
+        </div>
     </div>
-  </div>
+
+    <div class="grid-container" id="grid-container"></div>
+
+    <div class="summary-panel">
+        <div class="summary-header">
+            <h2>辨識結果匯總清單</h2>
+            <div class="btn-group">
+                <button class="btn-secondary" id="btn-copy-list" style="font-size: 13px; padding: 6px 12px;">📋 複製文字清單</button>
+                <button class="btn-secondary" id="btn-export-csv" style="font-size: 13px; padding: 6px 12px;">💾 下載 CSV</button>
+            </div>
+        </div>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th style="width: 80px;">編號</th>
+                    <th>商品名稱</th>
+                    <th style="width: 120px;">辨識數量</th>
+                    <th>辨識備註 / 狀態</th>
+                </tr>
+            </thead>
+            <tbody id="summary-tbody">
+                <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">尚未執行辨識</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
 <script>
-/* ======= 設定 ======= */
-const CAT_SRC = "ChatGPT_Image_2025年5月26日_下午05_09_32-removebg-preview.png";
-const WEB_APP_URL = ""; // 換成你的 Apps Script Web App URL
-const UPLOAD_PASSWORD = "0714";
-/* ==================== */
+    const gridContainer = document.getElementById('grid-container');
+    const apiKeyInput = document.getElementById('api-key');
+    const btnToggleKey = document.getElementById('btn-toggle-key');
+    const btnAddCard = document.getElementById('btn-add-card');
+    const btnClearImages = document.getElementById('btn-clear-images');
+    const btnRunAll = document.getElementById('btn-run-all');
+    const overallStatus = document.getElementById('overall-status');
+    const summaryTbody = document.getElementById('summary-tbody');
+    const btnCopyList = document.getElementById('btn-copy-list');
+    const btnExportCsv = document.getElementById('btn-export-csv');
 
-const nameList = document.getElementById('nameList');
-const igList   = document.getElementById('igList');
+    let cardCounter = 0;
 
-function spark(btn){ btn.classList.add('is-glow'); setTimeout(()=>btn.classList.remove('is-glow'),800); }
-document.getElementById('catList').src = CAT_SRC;
-document.getElementById('catInvite').src = CAT_SRC;
-
-let DATA = []; let INVITE_BG = null; let currentRows = []; let modalRow = null;
-
-/* 小工具 */
-const $ = (q)=>document.querySelector(q);
-const norm = s => (s??'').toString().trim().toLowerCase();
-const uniq = arr => [...new Set(arr)];
-function escapeHtml(s){return (s??'').toString().replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]))}
-
-/* 上傳名單（.xlsx） */
-const fileList = document.getElementById('fileList');
-document.getElementById('catList').addEventListener('click',()=>{
-  const ok = prompt('請輸入密碼 / Enter password'); if(ok!==UPLOAD_PASSWORD) return; fileList.click();
-});
-fileList.addEventListener('change', async (e)=>{
-  const f = e.target.files?.[0]; if(!f) return;
-  try{
-    const wb = XLSX.read(await f.arrayBuffer(), {type:'array'});
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws,{defval:""});
-    const req = ['item','number','country','flag','name','ig','leader','link','status','qrcode'];
-    DATA = rows.map(r=>{
-      const o = {};
-      req.forEach(k=>{ o[k] = (r[k] ?? r[k?.toUpperCase?.()] ?? ""); });
-      // 正規化型別
-      o.item=String(o.item); o.number=String(o.number); o.country=String(o.country);
-      o.flag=String(o.flag); o.name=String(o.name); o.ig=String(o.ig);
-      o.leader=String(o.leader); o.link=String(o.link); o.qrcode=String(o.qrcode);
-      o.status=String(o.status||'pending').toLowerCase();
-      return o;
+    const savedKey = localStorage.getItem('gemini_api_key') || '';
+    apiKeyInput.value = savedKey;
+    apiKeyInput.addEventListener('input', () => {
+        localStorage.setItem('gemini_api_key', apiKeyInput.value.trim());
     });
-    if(!DATA.length) throw new Error('EMPTY');
-    // datalist
-    nameList.innerHTML = uniq(DATA.map(r=>r.name).filter(Boolean)).map(v=>`<option value="${escapeHtml(v)}"></option>`).join('');
-    igList.innerHTML   = uniq(DATA.map(r=>r.ig).filter(Boolean)).map(v=>`<option value="${escapeHtml(v)}"></option>`).join('');
-    // 提示
-    const total=DATA.length, leaders=new Set(DATA.map(r=>norm(r.leader))).size, pend=DATA.filter(r=>!r.status||r.status==='pending').length;
-    $('#hint').textContent = `全部 / Total：${total}　桌長數 / Leaders：${leaders}　未回覆 / Pending：${pend}`;
-    alert(`全部：${total}　桌長數：${leaders}　未回覆：${pend}`);
-  }catch(err){
-    alert('清單讀取失敗，請確認為 .xlsx 且欄位命名正確。');
-  }finally{
-    e.target.value='';
-  }
-});
 
-/* 上傳邀請函底圖 */
-const fileInvite = document.getElementById('fileInvite');
-document.getElementById('catInvite').addEventListener('click',()=>{
-  const ok = prompt('請輸入密碼 / Enter password'); if(ok!==UPLOAD_PASSWORD) return; fileInvite.click();
-});
-fileInvite.addEventListener('change', (e)=>{
-  const f = e.target.files?.[0]; if(!f) return;
-  const fr=new FileReader(); fr.onload=()=>{ INVITE_BG=fr.result; alert('邀請函底圖已更新 / Invite background updated.'); };
-  fr.readAsDataURL(f); e.target.value='';
-});
+    btnToggleKey.addEventListener('click', () => {
+        if (apiKeyInput.type === 'password') {
+            apiKeyInput.type = 'text';
+            btnToggleKey.textContent = '隱藏';
+        } else {
+            apiKeyInput.type = 'password';
+            btnToggleKey.textContent = '顯示';
+        }
+    });
 
-/* 搜尋 */
-const elRes = $('#results'), elHead=$('#leaderHead');
-$('#btnSearch').addEventListener('click', doSearch);
-$('#nameInput').addEventListener('keydown', e=>{ if(e.key==='Enter') doSearch(); });
-$('#igInput').addEventListener('keydown', e=>{ if(e.key==='Enter') doSearch(); });
+    for (let i = 1; i <= 9; i++) {
+        createProductCard(`商品項目 ${i}`);
+    }
 
-function doSearch(){
-  const qn = norm($('#nameInput').value), qi = norm($('#igInput').value);
-  if(!DATA.length){ alert('請先上傳名單（.xlsx）'); return; }
-  let sel=null;
-  if(qi) sel = DATA.find(r=>norm(r.ig)===qi);
-  if(!sel && qn) sel = DATA.find(r=>norm(r.name)===qn);
-  if(!sel){
-    const cand = DATA.filter(r=>(qi&&norm(r.ig).includes(qi))||(qn&&norm(r.name).includes(qn)));
-    if(cand.length){ renderLeader(cand[0].leader); return; }
-    elHead.textContent='查無資料 / No results'; elRes.innerHTML=''; return;
-  }
-  renderLeader(sel.leader);
-}
+    function createProductCard(defaultTitle) {
+        cardCounter++;
+        const cardId = `card-${Date.now()}-${cardCounter}`;
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        card.id = cardId;
 
-function renderLeader(leader){
-  const L = (leader??'').toString();
-  currentRows = DATA.filter(r=>norm(r.leader)===norm(L));
-  elHead.textContent = `桌長 / Leader：${L || '—'}（${currentRows.length} 筆 / records）`;
-  elRes.innerHTML = currentRows.map(rowTpl).join('');
-  elRes.querySelectorAll('[data-act="confirm"]').forEach(btn=>{
-    btn.addEventListener('click', (e)=>openModal(e.currentTarget.closest('.item')));
-  });
-  elRes.querySelectorAll('[data-act="invite"]').forEach(btn=>{
-    btn.addEventListener('click', (e)=>downloadInvite(e.currentTarget.closest('.item')));
-  });
-}
+        card.innerHTML = `
+            <div class="card-header">
+                <input type="text" class="item-name-input" value="${defaultTitle}" placeholder="請輸入商品名稱">
+                <button class="btn-delete" title="刪除此區域">&times;</button>
+            </div>
+            <div class="drop-zone">
+                <div class="drop-prompt">
+                    📷 拖曳照片至此<br><span style="font-size: 12px; color: #94a3b8;">或點擊選取檔案</span>
+                </div>
+                <img class="preview-img" alt="預覽圖">
+                <input type="file" class="file-input" accept="image/*">
+            </div>
+            <div class="card-footer">
+                <div class="status-row">
+                    <span style="color: var(--text-muted); font-size: 13px;">數量：</span>
+                    <span class="count-badge count-result">-</span>
+                </div>
+                <div class="card-notes">等待上傳照片</div>
+            </div>
+        `;
 
-function rowTpl(r){
-  const status = (r.status||'pending').toLowerCase();
-  const sBadge = statusBadge(status);
-  const link = r.link ? `<a href="${escapeHtml(r.link)}" target="_blank" rel="noopener noreferrer">開啟連結 / Open link</a>` : '';
-  return `<div class="item" data-row='${escapeHtml(JSON.stringify(r))}'>
-    <div class="line1">
-      <div class="flag"><span class="fx">${escapeHtml(r.flag||'')}</span><span class="cty">${escapeHtml(r.country||'-')}</span></div>
-      <div class="name">${escapeHtml(r.name||'-')}</div>
-      <div class="ig">${escapeHtml(r.ig||'-')}</div>
-    </div>
-    <div class="line2">
-      <div class="status">${sBadge}</div>
-      <div class="linkwrap">${link}</div>
-    </div>
-    <div class="line3">
-      <button class="btn btn-ghost btn-rainbow btn-small" data-act="confirm">確認 / Confirm</button>
-      <button class="btn btn-invite btn-small" data-act="invite">邀請函下載 / Download Invite</button>
-    </div>
-  </div>`;
-}
+        gridContainer.appendChild(card);
+        bindCardEvents(card);
+    }
 
-function statusBadge(status){
-  if(status==='confirmed') return `<span class="badge good">${svgCheck()} 已確定 / Confirmed</span>`;
-  if(status==='cancelled') return `<span class="badge bad">${svgX()} 取消 / Cancelled</span>`;
-  return `<span class="badge warn">${svgQ()} 未回覆 / Pending</span>`;
-}
-function svgCheck(){return `<svg viewBox="0 0 24 24" fill="none"><path stroke="currentColor" stroke-width="2" d="M20 6L9 17l-5-5"/></svg>`}
-function svgQ(){return `<svg viewBox="0 0 24 24" fill="none"><path stroke="currentColor" stroke-width="2" d="M9.5 9a3.5 3.5 0 117 0c0 2-2 2.5-2 4"/><circle cx="12" cy="18" r="1.2" fill="currentColor"/></svg>`}
-function svgX(){return `<svg viewBox="0 0 24 24" fill="none"><path stroke="currentColor" stroke-width="2" d="M6 6l12 12M18 6L6 18"/></svg>`}
+    function bindCardEvents(card) {
+        const dropZone = card.querySelector('.drop-zone');
+        const fileInput = card.querySelector('.file-input');
+        const deleteBtn = card.querySelector('.btn-delete');
 
-/* Confirm Modal */
-const $bd = document.getElementById('backdrop'), $msg = document.getElementById('mMsg'), $note = document.getElementById('note');
-let chosen = null;
-document.querySelectorAll('.opt').forEach(o=>{
-  o.addEventListener('click', ()=>{ chosen=o.dataset.v; document.querySelectorAll('.opt').forEach(x=>x.classList.remove('active')); o.classList.add('active'); });
-});
-document.getElementById('mCancel').addEventListener('click', ()=>{ $bd.style.display='none'; chosen=null; $note.value=''; });
-document.getElementById('mSend').addEventListener('click', async (e)=>{
-  if(!modalRow || !chosen){ $msg.textContent='請先選擇一個選項 / Please choose one option.'; return; }
-  const btn = e.currentTarget; spark(btn); btn.disabled = true; $msg.innerHTML = `<span class="spin"></span> 送出中 / Sending…`;
-  const payload = {
-    _action:'submit',
-    item: modalRow.item||'', number: modalRow.number||'',
-    country: modalRow.country||'', flag: modalRow.flag||'',
-    name: modalRow.name||'', ig: modalRow.ig||'',
-    leader: modalRow.leader||'', link: modalRow.link||'',
-    qrcode: modalRow.qrcode||'', status: chosen, notes: $note.value||'', ts: Date.now()
-  };
-  try{
-    if(!WEB_APP_URL) throw new Error('NO_ENDPOINT');
-    const res = await fetch(WEB_APP_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload),mode:'cors',cache:'no-store'});
-    await res.text();
-    const idx = DATA.findIndex(r=>norm(r.name)===norm(modalRow.name)&&norm(r.ig)===norm(modalRow.ig)&&norm(r.leader)===norm(modalRow.leader));
-    if(idx>-1) DATA[idx].status = chosen;
-    renderLeader(modalRow.leader);
-    $msg.textContent='已送出 / Submitted'; setTimeout(()=>{ $bd.style.display='none'; }, 600);
-  }catch(err){ $msg.textContent = (err.message==='NO_ENDPOINT') ? '尚未設定 Web App URL' : '連線失敗 / Network error'; }
-  finally{ btn.disabled=false; chosen=null; $note.value=''; }
-});
-function openModal(itemEl){ modalRow = JSON.parse(itemEl.dataset.row||'{}'); $bd.style.display='flex'; }
+        dropZone.addEventListener('click', (e) => {
+            if (e.target !== deleteBtn) fileInput.click();
+        });
 
-/* 邀請函（金色 QR 佔位） */
-async function downloadInvite(itemEl){
-  const r = JSON.parse(itemEl.dataset.row||'{}');
-  const W=1920,H=1080; const cvs=document.createElement('canvas'); cvs.width=W;cvs.height=H; const ctx=cvs.getContext('2d');
-  if(INVITE_BG){ await drawImg(INVITE_BG,ctx,W,H); } else { ctx.fillStyle='#0e1118'; ctx.fillRect(0,0,W,H); const g=ctx.createLinearGradient(0,0,W,0); ['--r1','--r2','--r3','--r4','--r5','--r6'].forEach((v,i)=>g.addColorStop(i/5,getComputedStyle(document.documentElement).getPropertyValue(v))); ctx.fillStyle=g; ctx.fillRect(0,H-6,W,6); }
-  const title=`${r.item||''} - ${r.number||''}`;
-  ctx.font="700 86px 'Noto Serif HK Black','Yu Gothic UI Light',sans-serif"; ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(title, W/2, H/2);
-  const qr = await genSimpleQR(r.qrcode||r.link||''); const q=240; ctx.drawImage(qr,(W-q)/2,H/2+90,q,q);
-  const a=document.createElement('a'); a.download=`${(r.name||'invite')}.png`; a.href=cvs.toDataURL('image/png'); a.click();
-}
-function drawImg(src,ctx,W,H){return new Promise(res=>{const img=new Image(); img.onload=()=>{ctx.drawImage(img,0,0,W,H);res();}; img.src=src;});}
-function genSimpleQR(text){
-  return new Promise(res=>{
-    const s=33, scale=7, pad=6, W=(s+pad*2)*scale; const c=document.createElement('canvas'); c.width=W; c.height=W; const x=c.getContext('2d');
-    x.fillStyle='#fff'; x.fillRect(0,0,W,W); x.fillStyle='#d8b65f';
-    for(let i=0;i<s;i++){ for(let j=0;j<s;j++){ if((i*j+i+j+text.length)%7===0) x.fillRect((i+pad)*scale,(j+pad)*scale,scale,scale); } }
-    const img=new Image(); img.onload=()=>res(img); img.src=c.toDataURL('image/png');
-  });
-}
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                processImage(e.dataTransfer.files[0], card);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                processImage(e.target.files[0], card);
+            }
+        });
+
+        deleteBtn.addEventListener('click', () => {
+            card.remove();
+        });
+    }
+
+    // 【優化 1】：將圖片最大尺寸降至 800px，並提高壓縮比，加速上傳
+    function processImage(file, card) {
+        const reader = new FileReader();
+        const previewImg = card.querySelector('.preview-img');
+        const dropPrompt = card.querySelector('.drop-prompt');
+        const notes = card.querySelector('.card-notes');
+        const countBadge = card.querySelector('.count-result');
+
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                const maxDim = 800; // 降低尺寸，加速網路傳輸
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxDim || height > maxDim) {
+                    if (width > height) {
+                        height = Math.round((height * maxDim) / width);
+                        width = maxDim;
+                    } else {
+                        width = Math.round((width * maxDim) / height);
+                        height = maxDim;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // 轉為 JPEG Base64，並設定品質為 0.7 (預設0.92太肥)
+                const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                
+                card.dataset.base64 = optimizedBase64.split(',')[1];
+                card.dataset.hasImage = "true";
+
+                previewImg.src = optimizedBase64;
+                previewImg.style.display = 'block';
+                dropPrompt.style.display = 'none';
+
+                notes.textContent = '照片已就緒，等待執行辨識';
+                countBadge.className = 'count-badge';
+                countBadge.textContent = '-';
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    btnAddCard.addEventListener('click', () => {
+        const currentCount = document.querySelectorAll('.product-card').length;
+        createProductCard(`自訂商品 ${currentCount + 1}`);
+    });
+
+    btnClearImages.addEventListener('click', () => {
+        if (!confirm('確定要清空所有上傳的照片嗎？')) return;
+        document.querySelectorAll('.product-card').forEach(card => {
+            delete card.dataset.base64;
+            delete card.dataset.hasImage;
+            card.querySelector('.preview-img').style.display = 'none';
+            card.querySelector('.drop-prompt').style.display = 'block';
+            card.querySelector('.count-result').className = 'count-badge';
+            card.querySelector('.count-result').textContent = '-';
+            card.querySelector('.card-notes').textContent = '等待上傳照片';
+        });
+        summaryTbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">尚未執行辨識</td></tr>`;
+    });
+
+    async function identifyQuantityWithGemini(apiKey, base64Image, itemName) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        const promptText = `
+你是一個高精準度的庫存與商品視覺清點專家。
+請仔細辨識照片中名為「${itemName}」或畫面中最主要的商品物件，計算其精準數量。
+
+【清點準則】：
+1. 忽略背景中的非商品雜物。
+2. 若商品有堆疊、排列或部分遮擋，請盡可能仔細清點出全部可見個數。
+3. 如果照片中完全沒有任何商品，數量請填 0。
+
+請務必只回傳符合以下 JSON 格式的內容：
+{"count": 整數數量, "notes": "簡短的辨識說明"}
+`;
+
+        const requestBody = {
+            contents: [{
+                parts: [
+                    { text: promptText },
+                    { inline_data: { mime_type: "image/jpeg", data: base64Image } }
+                ]
+            }],
+            generationConfig: { response_mime_type: "application/json" }
+        };
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error?.message || `HTTP 狀態碼: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const candidate = data.candidates?.[0];
+        if (!candidate || !candidate.content?.parts?.[0]?.text) {
+            throw new Error('API 未回傳有效的內容');
+        }
+
+        return JSON.parse(candidate.content.parts[0].text);
+    }
+
+    // 【優化 2】：改為 Promise.all 平行處理，所有照片同時發送 API 請求
+    btnRunAll.addEventListener('click', async () => {
+        const apiKey = apiKeyInput.value.trim();
+        if (!apiKey) {
+            alert('請先在上方輸入 Gemini API Key！');
+            apiKeyInput.focus();
+            return;
+        }
+
+        const cards = Array.from(document.querySelectorAll('.product-card'));
+        const activeCards = cards.filter(c => c.dataset.hasImage === "true");
+
+        if (activeCards.length === 0) {
+            alert('請至少在一個區域上傳商品照片！');
+            return;
+        }
+
+        btnRunAll.disabled = true;
+        overallStatus.innerHTML = `<span>⏳ 正在【同時並發分析】 ${activeCards.length} 張照片...</span>`;
+        summaryTbody.innerHTML = '';
+
+        const resultsSummary = new Array(cards.length); // 預先佔位以確保匯總清單順序不亂
+
+        // 建立所有非同步任務的陣列
+        const identifyPromises = cards.map(async (card, index) => {
+            const itemName = card.querySelector('.item-name-input').value.trim() || `項目 ${index + 1}`;
+            const countBadge = card.querySelector('.count-result');
+            const notesEl = card.querySelector('.card-notes');
+
+            if (card.dataset.hasImage !== "true") {
+                resultsSummary[index] = { index: index + 1, name: itemName, count: '-', notes: '未上傳圖片' };
+                return; // 跳過無圖片卡片
+            }
+
+            notesEl.textContent = 'AI 處理中...';
+            countBadge.textContent = '分析中';
+
+            try {
+                // 發出 API 請求
+                const result = await identifyQuantityWithGemini(apiKey, card.dataset.base64, itemName);
+                const count = typeof result.count === 'number' ? result.count : 0;
+                const notes = result.notes || '辨識完成';
+
+                // 更新該卡片的 UI
+                countBadge.textContent = `${count} 件`;
+                countBadge.className = 'count-badge success';
+                notesEl.textContent = notes;
+
+                // 記錄結果
+                resultsSummary[index] = { index: index + 1, name: itemName, count: count, notes: notes };
+            } catch (err) {
+                console.error(err);
+                countBadge.textContent = '錯誤';
+                countBadge.className = 'count-badge error';
+                notesEl.textContent = `失敗: ${err.message}`;
+
+                resultsSummary[index] = { index: index + 1, name: itemName, count: '錯誤', notes: err.message };
+            }
+        });
+
+        // 等待所有卡片「同時」處理完畢
+        await Promise.all(identifyPromises);
+
+        // 渲染匯總表格 (過濾掉未上傳的項目，讓表格更乾淨，或者全部顯示)
+        renderSummaryTable(resultsSummary);
+        overallStatus.innerHTML = `<span>✅ 辨識完成！極速處理了 ${activeCards.length} 個區域</span>`;
+        btnRunAll.disabled = false;
+    });
+
+    function renderSummaryTable(list) {
+        summaryTbody.innerHTML = '';
+        list.forEach(item => {
+            if (!item) return; // 防呆
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.index}</td>
+                <td><strong>${item.name}</strong></td>
+                <td><span style="font-weight: bold; color: ${typeof item.count === 'number' ? '#2563eb' : '#64748b'};">${item.count}</span></td>
+                <td style="color: var(--text-muted);">${item.notes}</td>
+            `;
+            summaryTbody.appendChild(tr);
+        });
+    }
+
+    btnCopyList.addEventListener('click', () => {
+        const rows = summaryTbody.querySelectorAll('tr');
+        if (rows.length === 0 || rows[0].innerText.includes('尚未執行')) {
+            alert('尚無辨識結果可複製'); return;
+        }
+        let textOutput = "【商品辨識數量清單】\n";
+        rows.forEach(tr => {
+            const cols = tr.querySelectorAll('td');
+            if (cols.length >= 3) {
+                textOutput += `${cols[1].innerText}：${cols[2].innerText}\n`;
+            }
+        });
+        navigator.clipboard.writeText(textOutput).then(() => {
+            alert('已成功複製清單至剪貼簿！');
+        });
+    });
+
+    btnExportCsv.addEventListener('click', () => {
+        const rows = summaryTbody.querySelectorAll('tr');
+        if (rows.length === 0 || rows[0].innerText.includes('尚未執行')) {
+            alert('尚無辨識結果可匯出'); return;
+        }
+        let csvContent = "\uFEFF編號,商品名稱,辨識數量,備註\n";
+        rows.forEach(tr => {
+            const cols = tr.querySelectorAll('td');
+            if (cols.length >= 4) {
+                csvContent += `"${cols[0].innerText}","${cols[1].innerText}","${cols[2].innerText}","${cols[3].innerText}"\n`;
+            }
+        });
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `商品數量辨識表_${new Date().toISOString().slice(0,10)}.csv`;
+        link.click();
+    });
 </script>
 </body>
 </html>
